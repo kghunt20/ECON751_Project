@@ -2,12 +2,16 @@
 #0. Packages
 ################################################################################
 
-using Random, Statistics, Distributions, Optim
+using Random, Statistics, Distributions, Optim, DelimitedFiles
 
 ################################################################################
 #1. Import data
-# !!! Need to do this
 ################################################################################
+
+cd("Documents/Github/ECON751_Project")
+#Order of variables in data: id, age, lfp, x, wage, edu, lfp0, hinc
+#I deleted variable names from this file, so it is just numers.
+data = readdlm("data_age4554.txt");
 
 ################################################################################
 #2. Define model structure (Utility functions and wage)
@@ -59,7 +63,7 @@ end
 #k_start = Starting experience of the wife.
 #Δϵ = grid size for random component of wages
 
-function solve_model(parameters, y, s, k_start; T=T, β = β, s = s, Δϵ = Δϵ)
+function solve_model(parameters, y, s, k_start; T=T, β = β, Δϵ = Δϵ)
 
     σ_ϵ = parameters[1]
 
@@ -134,18 +138,14 @@ end
 #wO = Observed wage of wife (with measurement error)
 # !!! How will data be structured?
 
+function likelihood(parameters; data = data, T = T, β = β)
 
-function likelihood2(parameters;
-                     data_P = data_P, data_wO = data_wO, data_s = data_s,
-                     data_k_start = data_k_start, data_y = data_y,
-                     T = T, N_obs = N_obs, β = β)
-
-    σ_ϵ = x[1]
-    σ_η = x[2]
-    r_s = x[3]
-    r_k = x[4]
-    α1 = x[5]
-    α0 = x[6]
+    σ_ϵ = parameters[1]
+    σ_η = parameters[2]
+    r_s = parameters[3]
+    r_k = parameters[4]
+    α1 = parameters[5]
+    α0 = parameters[6]
 
     LL = 0.0
 
@@ -153,24 +153,30 @@ function likelihood2(parameters;
     σ_u = (σ_ϵ^2 + σ_η^2)^0.5
     ρ = σ_ϵ/σ_u
 
-    # !!! Parallelize this for sure...
-    for i = 1:N_obs
 
-        y = data_y[i,:]
-        s = data_s[i]
-        k_start = Int(data_k_start[i])
+    # !!! Parallelize this for sure
+    for id in unique(data[:,1])
+        #Create subset of data for current wife
+        data_now = data[data[:,1] .== id, :]
+
+        data_y = data_now[:,8]
+        data_wO = data_now[:,5]
+        data_s = data_now[1,6]
+        data_P = data_now[:,3]
+        k_start = Int(data_now[1,4])
         k_grid = k_start:(k_start + T - 1)
 
-        ϵ_grid, P, ϵ_star = solve_model(parameters; k_start = k_start)
+
+        ϵ_grid, P, ϵ_star = solve_model(parameters, data_y, data_s, k_start)
 
         i_k = 1
 
         for t = 1:T
 
             #Update LL if wife works.
-            if data_P[i,t] == 1
+            if data_P[t] == 1
 
-                u = log(data_wO[i,t]) - log_wage_det(parameters, s, k_grid[i_k])
+                u = log(data_wO[t]) - log_wage_det(parameters, data_s, k_grid[i_k])
                 A = (ϵ_star[t, i_k] - ρ*σ_ϵ/σ_u*u)/(σ_ϵ*(1-ρ^2)^0.5)
                 B = pdf(Normal(), u/σ_u)/σ_u
                 LL -= log( (1.0-cdf(Normal(), A))*B )
@@ -179,7 +185,7 @@ function likelihood2(parameters;
                 i_k += 1
 
             #Update LL if wife doesn't work.
-            else
+            elseif data_P[t] == 0
 
                 LL -= log(cdf(Normal(), ϵ_star[t, i_k]/σ_ϵ))
 
@@ -206,8 +212,11 @@ end
 #Number of periods the wife makes labor supply decisions.
 T = 20
 
+#Initial guess
+x0 = [1.0, 1.0, 0.1, 0.1, 0.1, 0.5]
+
 #I currently set iterations = 100 so it deoesn't go on forever
-estimates = optimize(likelihood, x0, iterations = 100).minimizer
+@time optimize(likelihood, x0, iterations = 100)
 
 ################################################################################
 #6. Calculate standard errors (Optional)
