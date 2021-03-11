@@ -99,7 +99,8 @@ function solve_model(parameters, y, s, k_start; T=T, β = β, Δϵ = Δϵ)
         log_w_bar = log_wage_det(parameters, s, k)
 
         #Calculate ϵ_star, being careful to not take log of negative number :)
-        A = c_U0(parameters, y[t], log_w_bar, s, k) - c_U1(parameters, y[t], log_w_bar, s, k) +
+        A = c_U0(parameters, y[t], log_w_bar, s, k) -
+            c_U1(parameters, y[t], log_w_bar, s, k) +
             β*EV[t+1, i_k] - β*EV[t+1, i_k + 1]
         if A > 0
             ϵ_star[t, i_k] = log(A) - log_w_bar
@@ -120,7 +121,8 @@ function solve_model(parameters, y, s, k_start; T=T, β = β, Δϵ = Δϵ)
         end
 
         #Calculate expected value function using trapezoid rule.
-        EV[t, i_k] = Δϵ*(sum(V[:, t, i_k] .* ϕ) - 0.5*(V[1,t,i_k]*ϕ[1] + V[N_ϵ,t,i_k]*ϕ[N_ϵ]))
+        EV[t, i_k] = Δϵ*(sum(V[:, t, i_k] .* ϕ) - 0.5*(V[1,t,i_k]*ϕ[1] +
+                     V[N_ϵ,t,i_k]*ϕ[N_ϵ]))
 
     end
 
@@ -136,7 +138,6 @@ end
 #This function calculates log-likelihood (LL) given our parameters and data
 #T = Total number of periods the wife makes labor supply decisions.
 #wO = Observed wage of wife (with measurement error)
-# !!! How will data be structured?
 
 function likelihood(parameters; data = data, T = T, β = β)
 
@@ -154,7 +155,6 @@ function likelihood(parameters; data = data, T = T, β = β)
     ρ = σ_ϵ/σ_u
 
 
-    # !!! Parallelize this for sure
     for id in unique(data[:,1])
         #Create subset of data for current wife
         data_now = data[data[:,1] .== id, :]
@@ -176,7 +176,8 @@ function likelihood(parameters; data = data, T = T, β = β)
             #Update LL if wife works.
             if data_P[t] == 1
 
-                u = log(data_wO[t]) - log_wage_det(parameters, data_s, k_grid[i_k])
+                u = log(data_wO[t]) -
+                    log_wage_det(parameters, data_s, k_grid[i_k])
                 A = (ϵ_star[t, i_k] - ρ*σ_ϵ/σ_u*u)/(σ_ϵ*(1-ρ^2)^0.5)
                 B = pdf(Normal(), u/σ_u)/σ_u
                 LL -= log( (1.0-cdf(Normal(), A))*B )
@@ -196,7 +197,7 @@ function likelihood(parameters; data = data, T = T, β = β)
     end
 
     #Show the LL while optimize iterates so you know it is doing something
-    @show LL
+    #@show LL
 
     LL
 
@@ -213,10 +214,20 @@ end
 T = 20
 
 #Initial guess
-x0 = [1.0, 1.0, 0.1, 0.1, 0.1, 0.5]
+x0 = [2.22, 0.3, 0.7, 0.00, 0.44, 0.34]
 
-#I currently set iterations = 100 so it deoesn't go on forever
-@time optimize(likelihood, x0, iterations = 100)
+#Start with only 10% of data to get a good initial guess quickly
+store_data = data
+data = data[1:2000,:]
+res1 = optimize(likelihood, x0, time_limit = 3000,
+                rel_tol = 0.001, abs_tol = 0.001)
+
+#Now use half of data
+data = store_data[1:10000,:]
+x0 = res.minimizer
+res2 = optimize(likelihood, x0, time_limit = 3000,
+                rel_tol = 0.001, abs_tol = 0.001)
+
 
 ################################################################################
 #6. Calculate standard errors (Optional)
