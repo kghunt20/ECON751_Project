@@ -202,12 +202,13 @@ couples = sample(unique(data[:,1]), 250, replace = false)
 data = original_data[subset.(original_data[:,1]),:]
 res1 = optimize(likelihood, x0, iterations)
 
+#Update initial guess
 x0 = res1.minimizer
 
 #Now use all the data
-data = store_data
+data = original_data
 res1 = optimize(likelihood, x0)
-
+x0 = res1.minimizer
 
 
 ################################################################################
