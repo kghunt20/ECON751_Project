@@ -98,8 +98,8 @@ function get_ξ_star(parameters, y, s, k_start; T=T, β = β)
         c_log_wage_det = log_wage_det(parameters, s, k)
 
         #Calculate ξ_star
-        A = U0(parameters, y[t], c_log_wage_det, s, k) -
-            U1(parameters, y[t], c_log_wage_det, s, k) +
+        A = U0(parameters, y[t], s, k) -
+            U1(parameters, y[t], s, k) +
             β*EV[t+1, i_k] - β*EV[t+1, i_k + 1]
         if A > 0
             ξ_star[t, i_k] = log(A) - c_log_wage_det
