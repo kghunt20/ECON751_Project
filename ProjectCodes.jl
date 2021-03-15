@@ -36,19 +36,20 @@ function log_wage_det(parameters, s, k)
     r_2 = parameters[5]
     r_3 = parameters[6]
 
-    r_0 + r_1*s + r_2*k
+    r_0 + r_1*s + r_2*k + r_3*k^2
 
 end
 
-#Calculate the current period utility from working
-function U1(parameters, c_y, w, s, k)
+#Calculate the current period utility from working not including wife's income
+#Total utility from working would be U1 + wife's wage
+function U1(parameters, c_y, s, k)
 
-    c_y + w
+    c_y
 
 end
 
 #Calculate the current period utility from not working
-function U0(parameters, c_y, w, s, k)
+function U0(parameters, c_y, s, k)
 
     α1 = parameters[7]
     α2 = parameters[8]
