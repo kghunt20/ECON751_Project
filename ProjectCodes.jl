@@ -8,7 +8,6 @@ using Random, Statistics, Distributions, Optim, DelimitedFiles, StatsBase
 #1. Import data
 ################################################################################
 
-cd("C:\\Users\\Kevin\\Documents\\Github\\ECON751_Project")
 #Order of variables in data: id, age, lfp, x, wage, edu, lfp0, hinc
 #I deleted variable names from this file, so it is just numers.
 original_data = readdlm("data_age4554.txt");
@@ -25,7 +24,7 @@ original_data = readdlm("data_age4554.txt");
 #r_3 = parameters[6]
 #α1 = parameters[7]
 #α2 = parameters[8]
-#s = schooling
+#s = years of school
 #k = experience
 
 #Calculate the deterministic part of the wage of the wife
@@ -42,19 +41,19 @@ end
 
 #Calculate the current period utility from working not including wife's income
 #Total utility from working would be U1 + wife's wage
-function U1(parameters, c_y, s, k)
+function U1(parameters, y, s, k)
 
-    c_y
+    y
 
 end
 
 #Calculate the current period utility from not working
-function U0(parameters, c_y, s, k)
+function U0(parameters, y, s, k)
 
     α1 = parameters[7]
     α2 = parameters[8]
 
-    c_y + α2*c_y + α1
+    y + α2*y + α1
 
 end
 
@@ -87,17 +86,19 @@ function get_ξ_star(parameters, y, s, k_start; T=T, β = β)
     #Participation cut-off ϵ^* (ϵ_star)
     ξ_star = zeros(T, T)
 
+    #A lower bound for ξ in the calculations below
     ξ_lb = quantile(Normal(0.0, σ_ξ), 0.0001)
 
     #Solve the model recursively
     for t = reverse(1:T), i_k = 1:t
 
+        #Define current experience for the wife
         k = k_grid[i_k]
 
-        #Deterministic part of wife's wage
+        #Deterministic part of wife's log wage. "c_" stands for current
         c_log_wage_det = log_wage_det(parameters, s, k)
 
-        #Calculate ξ_star
+        #Calculate ξ_star using equation on page 84 of Lecture 3
         A = U0(parameters, y[t], s, k) -
             U1(parameters, y[t], s, k) +
             β*EV[t+1, i_k] - β*EV[t+1, i_k + 1]
@@ -107,10 +108,12 @@ function get_ξ_star(parameters, y, s, k_start; T=T, β = β)
             ξ_star[t, i_k] = ξ_lb
         end
 
+        #Calculate the expect value function (EV) using equation in lecture 3
+        #page 87
         EV[t, i_k] = (y[t] + β*EV[t+1, i_k + 1] ) * (1-Φ(ξ_star[t,i_k]/σ_ξ)) +
                      exp(c_log_wage_det)*exp(0.5*σ_ξ^2)*
                         (1-Φ((ξ_star[t,i_k]-σ_ξ^2)/σ_ξ)) +
-                    (U0(parameters, y[t], exp(c_log_wage_det), s, k) + β*EV[t+1,i_k])*
+                    (U0(parameters, y[t], s, k) + β*EV[t+1,i_k])*
                         Φ(ξ_star[t, i_k]/σ_ξ) #Is there a typo in notes here?
 
     end
@@ -133,44 +136,46 @@ function likelihood(parameters; data = data, T = T, β = β)
     σ_ξ = parameters[1]
     σ_η = parameters[2]
 
+    #Initialize log-likelihood
     LL = 0.0
 
     #Relevant parameters for likelihood function
     σ_u = (σ_ξ^2 + σ_η^2)^0.5
     ρ = σ_ξ/σ_u
 
-
+    #Loop over every couple in the data
     for id in unique(data[:,1])
+
         #Create subset of data for current wife
         data_now = data[data[:,1] .== id, :]
 
-        data_y = data_now[:,8]
-        data_wO = data_now[:,5]
-        data_s = data_now[1,6]
-        data_P = data_now[:,3]
-        k_start = Int(data_now[1,4])
-        data_k = data_now[:,4]
+        #Unpack data_now
+        yvec = data_now[:,8] #Husbands income
+        wOvec = data_now[:,5] #Wife's observed income
+        s = data_now[1,6] #Wife's schooling
+        Pvec = data_now[:,3] #Wife's participation
+        kvec = data_now[:,4] #Wife's experience
 
-        ξ_star = get_ξ_star(parameters, data_y, data_s, k_start)
+        ξ_star = get_ξ_star(parameters, yvec, s, kvec[1])
 
         i_k = 1
 
+        #Loop over each time period
         for t = 1:T
 
-            #Update LL if wife works.
-            if data_P[t] == 1
+            #Update LL if wife works using equaation on page 109 in lecture 3
+            if Pvec[t] == 1
 
-                u = log(data_wO[t]) -
-                    log_wage_det(parameters, data_s, data_k[t])
+                u = log(wOvec[t]) -
+                    log_wage_det(parameters, s, kvec[t])
                 A = (ξ_star[t, i_k] - ρ*σ_ξ/σ_u*u)/(σ_ξ*(1-ρ^2)^0.5)
                 B = pdf(Normal(), u/σ_u)/σ_u
                 LL -= log( (1.0-cdf(Normal(), A))*B)
 
-                #Increase experience for next period
                 i_k += 1
 
-            #Update LL if wife doesn't work.
-            elseif data_P[t] == 0
+            #Update LL if wife doesn't work using equation on page 109 of lecture 3.
+            elseif Pvec[t] == 0
 
                 LL -= log(cdf(Normal(), ξ_star[t, i_k]/σ_ξ))
 
@@ -193,15 +198,15 @@ end
 T = 20
 
 #Initial guess
-x0 =  [0.5987529235445073, 0.19021365175159843, 9.33874450407129,
-       0.047565980905554126, 0.007830603645591645, -32.41353995455251,
-       23912.216292202516, 0.008811804383663021]
+x0 =  [0.5990950138078999, 0.1892819256699379, 9.295133566845593,
+       0.046655500082713575, 0.014359272734607026, -0.00014647900745677907,
+       24126.810548022222, 0.00978890544903218]
 
 #Start with only 250 couples of data to get a good initial guess quickly
 #couples = sample(unique(store_data[:,1]), 100,  replace = false)
 couples = sample(unique(data[:,1]), 250, replace = false)
 data = original_data[subset.(original_data[:,1]),:]
-res1 = optimize(likelihood, x0, iterations)
+res1 = optimize(likelihood, x0)
 
 #Update initial guess
 x0 = res1.minimizer
