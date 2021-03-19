@@ -3,6 +3,7 @@
 ################################################################################
 # Hi
 using Random, Statistics, Distributions, Optim, DelimitedFiles, StatsBase
+using ForwardDiff, DataFrames
 
 ################################################################################
 #1. Import data
@@ -115,6 +116,7 @@ function get_ξ_star(parameters, y, s, k_start; T=T, β = β)
                         (1-Φ((ξ_star[t,i_k]-σ_ξ^2)/σ_ξ)) +
                     (U0(parameters, y[t], s, k) + β*EV[t+1,i_k])*
                         Φ(ξ_star[t, i_k]/σ_ξ) #Is there a typo in notes here?
+                                              #Yes
 
     end
 
@@ -204,6 +206,7 @@ x0 =  [0.5990950138078999, 0.1892819256699379, 9.295133566845593,
 
 #Start with only 250 couples of data to get a good initial guess quickly
 #couples = sample(unique(store_data[:,1]), 100,  replace = false)
+data = original_data
 couples = sample(unique(data[:,1]), 250, replace = false)
 data = original_data[subset.(original_data[:,1]),:]
 res1 = optimize(likelihood, x0)
@@ -213,16 +216,17 @@ x0 = res1.minimizer
 
 #Now use all the data
 data = original_data
-res1 = optimize(likelihood, x0)
-x0 = res1.minimizer
+res2 = optimize(likelihood, x0)
+xhat = res2.minimizer
 
 
 ################################################################################
 #6. Calculate standard errors (Optional)
 ################################################################################
 
-
-
+g = ForwardDiff.gradient(likelihood, xhat) # g = ∇likelihood
+h = ForwardDiff.hessian(likelihood, xhat)
+Avar = inv(h) * (g'*g) * inv(h)
 
 
 
@@ -270,7 +274,7 @@ function simulate_obs(parameters, N, y, s, k_start; T = T, β = β)
                 wO = -9.0
             end
 
-            observations[i,:] = [n, 44+t, P, k, wO, s, 1, y[t]]
+            observations[i,:] = [44+t, P, k, wO, s, 1, y[t],n]
             k = k_prime
             i+=1
 
@@ -285,20 +289,21 @@ end
 
 function get_simulated_data(x0, N; β = β, T = T, data = original_data)
 
-    simulated_data = zeros(T*N*length(unique(data[:,1])), 8)
+    simulated_data = zeros(T*N*length(unique(data[:,1])), 9)
 
     start = 1
     stop = N*T
 
     for id in unique(data[:,1])
 
-        #Order of variables in data: id, age, lfp, x, wage, edu, lfp0, hinc
+        #Order of variables in data: id, age, lfp, x, wage, edu, lfp0, hinc, rep_id
 
         yvec = data[data[:,1].==id, 8]
         s = data[data[:,1].==id, 6][1]
         k_start = data[data[:,1].==id, 4][1]
 
-        simulated_data[start:stop, :] = simulate_obs(x0, N, yvec, s, k_start)
+        simulated_data[start:stop, 1] .= id
+        simulated_data[start:stop, 2:end] = simulate_obs(x0, N, yvec, s, k_start)
 
         start += N*T
         stop += N*T
@@ -310,9 +315,9 @@ function get_simulated_data(x0, N; β = β, T = T, data = original_data)
 end
 
 
-data = original_data[1:20, :]
+data = original_data
 
-simulated_data = get_simulated_data(x0, 20)
+simulated_data = get_simulated_data(xhat, 20)
 
 ################################################################################
 #1. The average number of period working over the 10 years overall and by
@@ -320,11 +325,32 @@ simulated_data = get_simulated_data(x0, 20)
 #   13-15 and 16+.
 ################################################################################
 
+simulated_avg10 = zeros(length(1:5))
+original_avg10 = zeros(length(1:5))
 
+function avg10(smin, smax, data)
+    temp = data[(data[:,6] .>= smin) .& (data[:,6] .<= smax) .& (data[:,2] .<= 54),:]
+    df = convert(DataFrame,temp)
+    gdf = groupby(df, [:x1, :x9])
+    ss = combine(gdf, :x3 => sum)
+    avg = mean(ss[:,3])
+    avg
+end
 
+data = simulated_data
+simulated_avg10[1] = avg10(0,11,data)
+simulated_avg10[2] = avg10(12,12,data)
+simulated_avg10[3] = avg10(13,15,data)
+simulated_avg10[4] = avg10(16,54,data)
+simulated_avg10[5] = avg10(0,54,data)
 
-
-
+data = original_data
+data = hcat(data,zeros(length(data[:,1]))) # fake rep_id
+original_avg10[1] = avg10(0,11,data)
+original_avg10[2] = avg10(12,12,data)
+original_avg10[3] = avg10(13,15,data)
+original_avg10[4] = avg10(16,54,data)
+original_avg10[5] = avg10(0,54,data)
 
 ################################################################################
 #2. The fraction of women working at each age.
