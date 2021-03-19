@@ -236,7 +236,7 @@ x0 = res1.minimizer
 #*******************************************************************************
 ################################################################################
 
-function simulate_data(parameters, N, y, s, k_start; T = T, β = β)
+function simulate_obs(parameters, N, y, s, k_start; T = T, β = β)
 
     σ_ξ = parameters[1]
     σ_η = parameters[2]
@@ -245,7 +245,7 @@ function simulate_data(parameters, N, y, s, k_start; T = T, β = β)
 
     observations = zeros(T*N, 8)
 
-    #Order of variables in data: id, age, lfp, x, wage, edu, lfp0, hinc
+
     i = 1
     for n = 1:N
 
@@ -270,7 +270,7 @@ function simulate_data(parameters, N, y, s, k_start; T = T, β = β)
                 wO = -9.0
             end
 
-            observations[i,:] = [n, t, P, k, wO, s, 1, y[t]]
+            observations[i,:] = [n, 44+t, P, k, wO, s, 1, y[t]]
             k = k_prime
             i+=1
 
@@ -281,6 +281,38 @@ function simulate_data(parameters, N, y, s, k_start; T = T, β = β)
     observations
 
 end
+
+
+function get_simulated_data(x0, N; β = β, T = T, data = original_data)
+
+    simulated_data = zeros(T*N*length(unique(data[:,1])), 8)
+
+    start = 1
+    stop = N*T
+
+    for id in unique(data[:,1])
+
+        #Order of variables in data: id, age, lfp, x, wage, edu, lfp0, hinc
+
+        yvec = data[data[:,1].==id, 8]
+        s = data[data[:,1].==id, 6][1]
+        k_start = data[data[:,1].==id, 4][1]
+
+        simulated_data[start:stop, :] = simulate_obs(x0, N, yvec, s, k_start)
+
+        start += N*T
+        stop += N*T
+
+    end
+
+    simulated_data
+
+end
+
+
+data = original_data[1:20, :]
+
+simulated_data = get_simulated_data(x0, 20)
 
 ################################################################################
 #1. The average number of period working over the 10 years overall and by
@@ -297,16 +329,24 @@ end
 ################################################################################
 #2. The fraction of women working at each age.
 ################################################################################
+ages = 45:64
 
+simulated_LFP = zeros(length(ages))
+original_LFP = zeros(length(ages))
 
+for i = 1:length(ages)
 
+    simulated_LFP[i] = mean((simulated_data[simulated_data[:, 2].== ages[i], 3] .== 1.0))
+    original_LFP[i] = mean((original_data[original_data[:, 2].== ages[i], 3] .== 1.0))
 
+end
 
+using Plots
 
-
-
-
-
+plot(ages, simulated_LFP, label = "Simulated Data", lw = 3, ylim = (0, 1),
+     main = "LFP")
+plot!(ages, original_LFP, label = "Original Data", lw = 3)
+title!("LFP")
 
 ################################################################################
 #4. The fraction of women working by work experience levels (a) 10 years or
