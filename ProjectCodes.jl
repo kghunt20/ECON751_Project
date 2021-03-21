@@ -25,18 +25,22 @@ original_data = readdlm("data_age4554.txt");
 #r_3 = parameters[6]
 #α1 = parameters[7]
 #α2 = parameters[8]
+#r_4 = parameters[9]
+#r_5 = parameters[10]
 #s = years of school
 #k = experience
 
 #Calculate the deterministic part of the wage of the wife
-function log_wage_det(parameters, s, k)
+function log_wage_det(parameters, s, k, a)
 
     r_0 = parameters[3]
     r_1 = parameters[4]
     r_2 = parameters[5]
     r_3 = parameters[6]
+    r_4 = parameters[9]
+    r_5 = parameters[10]
 
-    r_0 + r_1*s + r_2*k + r_3*k^2
+    r_0 + r_1*s + r_2*k + r_3*k^2 + r_4*a + r_5 * a^2
 
 end
 
@@ -97,7 +101,7 @@ function get_ξ_star(parameters, y, s, k_start; T=T, β = β)
         k = k_grid[i_k]
 
         #Deterministic part of wife's log wage. "c_" stands for current
-        c_log_wage_det = log_wage_det(parameters, s, k)
+        c_log_wage_det = log_wage_det(parameters, s, k, t+44)
 
         #Calculate ξ_star using equation on page 84 of Lecture 3
         A = U0(parameters, y[t], s, k) -
@@ -169,7 +173,7 @@ function likelihood(parameters; data = data, T = T, β = β)
             if Pvec[t] == 1
 
                 u = log(wOvec[t]) -
-                    log_wage_det(parameters, s, kvec[t])
+                    log_wage_det(parameters, s, kvec[t], t+44)
                 A = (ξ_star[t, i_k] - ρ*σ_ξ/σ_u*u)/(σ_ξ*(1-ρ^2)^0.5)
                 B = pdf(Normal(), u/σ_u)/σ_u
                 LL -= log( (1.0-cdf(Normal(), A))*B)
@@ -202,7 +206,7 @@ T = 20
 #Initial guess
 x0 =  [0.5990950138078999, 0.1892819256699379, 9.295133566845593,
        0.046655500082713575, 0.014359272734607026, -0.00014647900745677907,
-       24126.810548022222, 0.00978890544903218]
+       24126.810548022222, 0.00978890544903218, 0.0, 0.0]
 
 #Start with only 250 couples of data to get a good initial guess quickly
 #couples = sample(unique(store_data[:,1]), 100,  replace = false)
@@ -224,9 +228,9 @@ xhat = res2.minimizer
 #6. Calculate standard errors (Optional)
 ################################################################################
 
-g = ForwardDiff.gradient(likelihood, xhat) # g = ∇likelihood
-h = ForwardDiff.hessian(likelihood, xhat)
-Avar = inv(h) * (g'*g) * inv(h)
+#g = ForwardDiff.gradient(likelihood, xhat) # g = ∇likelihood
+#h = ForwardDiff.hessian(likelihood, xhat)
+#Avar = inv(h) * (g'*g) * inv(h)
 
 
 
@@ -265,7 +269,7 @@ function simulate_obs(parameters, N, y, s, k_start; T = T, β = β)
 
             if ξ > ξ_star[t, i_k]
                 P = 1
-                wO = exp(log_wage_det(parameters, s, k_start + i_k -1) +
+                wO = exp(log_wage_det(parameters, s, k_start + i_k -1, t+44) +
                          randn()*σ_η)
                 k_prime = k+1
                 i_k = i_k + 1
