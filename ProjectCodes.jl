@@ -318,7 +318,11 @@ end
 data = original_data
 
 simulated_data = get_simulated_data(xhat, 20)
-
+outfile = "simulated_data.txt"
+f = open(outfile, "w")
+for i = 1:size(simulated_data,1)
+	println(f, simulated_data[i,:])
+end
 ################################################################################
 #1. The average number of period working over the 10 years overall and by
 #   whether or not the woman has less than 12 years of schooling, exactly 12,
@@ -328,7 +332,7 @@ simulated_data = get_simulated_data(xhat, 20)
 simulated_avg10 = zeros(length(1:5))
 original_avg10 = zeros(length(1:5))
 
-function avg10(smin, smax, data)
+function overall_lfp(smin, smax, data)
     temp = data[(data[:,6] .>= smin) .& (data[:,6] .<= smax) .& (data[:,2] .<= 54),:]
     df = convert(DataFrame,temp)
     gdf = groupby(df, [:x1, :x9])
@@ -338,19 +342,19 @@ function avg10(smin, smax, data)
 end
 
 data = simulated_data
-simulated_avg10[1] = avg10(0,11,data)
-simulated_avg10[2] = avg10(12,12,data)
-simulated_avg10[3] = avg10(13,15,data)
-simulated_avg10[4] = avg10(16,54,data)
-simulated_avg10[5] = avg10(0,54,data)
+simulated_avg10[1] = overall_lfp(0,11,data)
+simulated_avg10[2] = overall_lfp(12,12,data)
+simulated_avg10[3] = overall_lfp(13,15,data)
+simulated_avg10[4] = overall_lfp(16,54,data)
+simulated_avg10[5] = overall_lfp(0,54,data)
 
 data = original_data
 data = hcat(data,zeros(length(data[:,1]))) # fake rep_id
-original_avg10[1] = avg10(0,11,data)
-original_avg10[2] = avg10(12,12,data)
-original_avg10[3] = avg10(13,15,data)
-original_avg10[4] = avg10(16,54,data)
-original_avg10[5] = avg10(0,54,data)
+original_avg10[1] = overall_lfp(0,11,data)
+original_avg10[2] = overall_lfp(12,12,data)
+original_avg10[3] = overall_lfp(13,15,data)
+original_avg10[4] = overall_lfp(16,54,data)
+original_avg10[5] = overall_lfp(0,54,data)
 
 ################################################################################
 #2. The fraction of women working at each age.
@@ -375,19 +379,91 @@ plot!(ages, original_LFP, label = "Original Data", lw = 3)
 title!("LFP")
 
 ################################################################################
-#4. The fraction of women working by work experience levels (a) 10 years or
+#3. The fraction of women working by work experience levels (a) 10 years or
 #   less, (b) 11-20, (c) 21+.
 ################################################################################
 
+simulated_byK = zeros(length(1:3))
+original_byK = zeros(length(1:3))
 
+function lfp_byK(kmin, kmax, data)
+    temp = data[(data[:,4] .>= kmin) .& (data[:,4] .<= kmax) .& (data[:,2] .<= 54),:]
+    df = convert(DataFrame,temp)
+    gdf = groupby(df, [:x1, :x9])
+    ss = combine(gdf, :x3 => mean)
+    avg = mean(ss[:,3])
+    avg
+end
 
+data = simulated_data
+simulated_byK[1] = lfp_byK(0,10,data)
+simulated_byK[2] = lfp_byK(11,20,data)
+simulated_byK[3] = lfp_byK(21,54,data)
 
+data = original_data
+data = hcat(data,zeros(length(data[:,1]))) # fake rep_id
+original_byK[1] = lfp_byK(0,10,data)
+original_byK[2] = lfp_byK(11,20,data)
+original_byK[3] = lfp_byK(21,54,data)
 
+################################################################################
+#4. The mean wage of working women overall, by the four education classes in #1
+#   above and by age.
+################################################################################
 
+### overall ###
+temp = simulated_data[(simulated_data[:,3] .== 1),:]
+df = convert(DataFrame,temp)
+gdf = groupby(df, [:x1, :x9])
+ss = combine(gdf, :x5 => mean)
+simulated_wage = mean(ss[:,3])
+original_wage = mean(original_data[original_data[:, 3].==1, 5])
 
+### by education class ###
+simulated_wage_byedu = zeros(length(1:4))
+original_wage_byedu = zeros(length(1:4))
 
+function wage_byedu(smin, smax, data)
+    temp = data[(data[:,6] .>= smin) .& (data[:,6] .<= smax) .& (data[:,2] .<= 54) .& (data[:,3] .== 1),:]
+    df = convert(DataFrame,temp)
+    gdf = groupby(df, [:x1, :x9])
+    ss = combine(gdf, :x5 => mean)
+    avg = mean(ss[:,3])
+    avg
+end
 
+data = simulated_data
+simulated_wage_byedu[1] = wage_byedu(0,11,data)
+simulated_wage_byedu[2] = wage_byedu(12,12,data)
+simulated_wage_byedu[3] = wage_byedu(13,15,data)
+simulated_wage_byedu[4] = wage_byedu(16,54,data)
 
+data = original_data
+data = hcat(data,zeros(length(data[:,1]))) # fake rep_id
+original_wage_byedu[1] = wage_byedu(0,11,data)
+original_wage_byedu[2] = wage_byedu(12,12,data)
+original_wage_byedu[3] = wage_byedu(13,15,data)
+original_wage_byedu[4] = wage_byedu(16,54,data)
+
+### by age ###
+ages = 45:54
+simulated_wage_byage = zeros(length(ages))
+original_wage_byage = zeros(length(ages))
+
+for i = 1:length(ages)
+
+    temp = simulated_data[(simulated_data[:,2] .== ages[i]) .& (simulated_data[:,3] .== 1),:]
+    df = convert(DataFrame,temp)
+    gdf = groupby(df, [:x1, :x9])
+    ss = combine(gdf, :x5 => mean)
+    simulated_wage_byage[i] = mean(ss[:,3])
+    original_wage_byage[i] = mean(original_data[(original_data[:, 2].== ages[i]) .& (original_data[:, 3].==1), 5])
+
+end
+
+plot(ages, simulated_wage_byage, label = "Simulated Data", lw = 3, ylim = (10000, 50000), main = "Wage")
+plot!(ages, original_wage_byage, label = "Original Data", lw = 3)
+title!("Wage")
 ################################################################################
 #5. The 2x2 table of labor force participation by lagged labor force
 #   participation.
