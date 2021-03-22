@@ -476,9 +476,49 @@ title!("Wage")
 #5. The 2x2 table of labor force participation by lagged labor force
 #   participation.
 ################################################################################
+ages = 45:54
 
+data = simulated_data
+function lfp_matrix(data, ages)
+    matrix = zeros((2,2))
+    N = size(data,1)
+    lfp00 = 0
+    lfp01 = 0
+    lfp10 = 0
+    lfp11 = 0
+    for a = 1:length(ages)
+        if ages[a] == 45.0
+            lfp_t1 = data[data[:,2].==45.0,3]
+            lfp_t0 = data[data[:,2].==45.0,7]
+            cat = hcat(lfp_t0,lfp_t1)
+            for k = 1:size(cat,1)
+                lfp00 += (1-cat[k,1])*(1-cat[k,2])
+                lfp01 += (1-cat[k,1])*(cat[k,2])
+                lfp10 += (cat[k,1])*(1-cat[k,2])
+                lfp11 += (cat[k,1])*(cat[k,2])
+            end
+        else
+            lfp_t1 = data[data[:,2].==ages[a],3]
+            lfp_t0 = data[data[:,2].==ages[a-1],3]
+            cat = hcat(lfp_t0,lfp_t1)
+            for k = 1:size(cat,1)
+                lfp00 += (1-cat[k,1])*(1-cat[k,2])
+                lfp01 += (1-cat[k,1])*(cat[k,2])
+                lfp10 += (cat[k,1])*(1-cat[k,2])
+                lfp11 += (cat[k,1])*(cat[k,2])
+            end
+        end
+    end
+    matrix[1,1] = lfp00/N
+    matrix[1,2] = lfp01/N
+    matrix[2,1] = lfp10/N
+    matrix[2,2] = lfp11/N
 
+    matrix
+end
 
+lfp_matrix_simul = lfp_matrix(simulated_data)
+lfp_matrix_orig = lfp_matrix(original_data)
 
 ################################################################################
 #*******************************************************************************
