@@ -427,6 +427,8 @@ ss = combine(gdf, :x5 => mean)
 simulated_wage = mean(ss[:,3])
 original_wage = mean(original_data[original_data[:, 3].==1, 5])
 
+
+
 ### by education class ###
 simulated_wage_byedu = zeros(length(1:4))
 original_wage_byedu = zeros(length(1:4))
@@ -478,7 +480,6 @@ title!("Wage")
 ################################################################################
 ages = 45:54
 
-data = simulated_data
 function lfp_matrix(data, ages)
     matrix = zeros((2,2))
     N = size(data,1)
@@ -517,8 +518,8 @@ function lfp_matrix(data, ages)
     matrix
 end
 
-lfp_matrix_simul = lfp_matrix(simulated_data)
-lfp_matrix_orig = lfp_matrix(original_data)
+lfp_matrix_simul = lfp_matrix(simulated_data,ages)
+lfp_matrix_orig = lfp_matrix(original_data,ages)
 
 ################################################################################
 #*******************************************************************************
@@ -533,15 +534,40 @@ lfp_matrix_orig = lfp_matrix(original_data)
 #   How many years, on average, will women work between those ages, overall and
 #   by education?
 ################################################################################
+ages = 55:64
+
+simulated_LFP_old = zeros(length(ages))
+simulated_LFP_old1= zeros(length(ages))
+simulated_LFP_old2 = zeros(length(ages))
+simulated_LFP_old3 = zeros(length(ages))
+simulated_LFP_old4 = zeros(length(ages))
+
+for i = 1:length(ages)
+    ### Overall ###
+    simulated_LFP_old[i] = mean((simulated_data[simulated_data[:, 2].== ages[i], 3] .== 1.0))
+
+    ### By education ###
+    simulated_LFP_old1[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .< 12), 3] .== 1.0))
+    simulated_LFP_old2[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .== 12), 3] .== 1.0))
+    simulated_LFP_old3[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .> 12) .& (simulated_data[:,6] .< 16), 3] .== 1.0))
+    simulated_LFP_old4[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .> 15), 3] .== 1.0))
+
+end
 
 
+plot(ages, simulated_LFP_old, label = "Overall", lw = 3, ylim = (0.35, 0.8),
+     main = "LFP")
+title!("LFP by Age (overall)")
 
-
-
-
-
-
-
+plot(ages, simulated_LFP_old1, label = "edu≦11", lw = 3, ylim = (0.35,0.8),
+     main = "LFP")
+plot!(ages, simulated_LFP_old2, label = "edu=12", lw = 3, ylim = (0.35,0.8),
+     main = "LFP")
+plot!(ages, simulated_LFP_old3, label = "13≦edu≦15", lw = 3, ylim = (0.35, 0.8),
+     main = "LFP")
+plot!(ages, simulated_LFP_old4, label = "edu≧16", lw = 3, ylim = (0.35, 0.8),
+     main = "LFP")
+title!("LFP by Age (by education)")
 
 ################################################################################
 #2. Assume that the government introduces a flat income tax on total earnings
