@@ -713,21 +713,10 @@ function get_ξ_star_2(parameters, y, s, k_start; T=T, β = β, τ_2=τ_2)
 
         #Calculate ξ_star using equation on page 84 of Lecture 3
 
-        if y < 50000
+
             A = (U0_2(parameters, y[t], s, k; τ_2=τ_2) -
                 U1_2(parameters, y[t], s, k; τ_2=τ_2) +
                 β*EV[t+1, i_k] - β*EV[t+1, i_k + 1])/(1-τ1)
-        else
-            A = (U0_2(parameters, 50000, s, k; τ_2=τ_2) -
-                U1_2(parameters, 50000, s, k; τ_2=τ_2) +
-                β*EV[t+1, i_k] - β*EV[t+1, i_k + 1])/(1-τ1) +
-                (U0_2(parameters, y[t]-50000, s, k; τ_2=τ_2) -
-                U1_2(parameters, y[t]-50000, s, k; τ_2=τ_2) +
-                β*EV[t+1, i_k] - β*EV[t+1, i_k + 1])/(1-τ2)
-
-        end
-
-
 
 
         if A > 0
@@ -739,25 +728,20 @@ function get_ξ_star_2(parameters, y, s, k_start; T=T, β = β, τ_2=τ_2)
         #Calculate the expect value function (EV) using equation in lecture 3
         #page 87
 
-        if y < 50000
+        if y[t] < 50000
             EV[t, i_k] = ((1-τ1)*y[t] + β*EV[t+1, i_k + 1] ) * (1-Φ(ξ_star[t,i_k]/σ_ξ)) +
                          (1-τ1)*exp(c_log_wage_det)*exp(0.5*σ_ξ^2)*
                             (1-Φ((ξ_star[t,i_k]-σ_ξ^2)/σ_ξ)) +
-                        (U0(parameters, y[t], s, k; τ_2=τ_2) + β*EV[t+1,i_k])*
+                        (U0_2(parameters, y[t], s, k; τ_2=τ_2) + β*EV[t+1,i_k])*
                             Φ(ξ_star[t, i_k]/σ_ξ)
 
         else
             EV[t, i_k] = ((1-τ1)*50000 + β*EV[t+1, i_k + 1] ) * (1-Φ(ξ_star[t,i_k]/σ_ξ)) +
                          (1-τ1)*exp(c_log_wage_det)*exp(0.5*σ_ξ^2)*
                             (1-Φ((ξ_star[t,i_k]-σ_ξ^2)/σ_ξ)) +
-                        (U0(parameters, 50000, s, k; τ_2=τ_2) + β*EV[t+1,i_k])*
+                        (U0_2(parameters, y[t], s, k; τ_2=τ_2) + β*EV[t+1,i_k])*
                             Φ(ξ_star[t, i_k]/σ_ξ)
-                            +
-            ((1-τ2)*(y[t]-50000) + β*EV[t+1, i_k + 1] ) * (1-Φ(ξ_star[t,i_k]/σ_ξ)) +
-                                         (1-τ2)*exp(c_log_wage_det)*exp(0.5*σ_ξ^2)*
-                                            (1-Φ((ξ_star[t,i_k]-σ_ξ^2)/σ_ξ)) +
-                                        (U0(parameters, y[t]-50000, s, k; τ_2=τ_2) + β*EV[t+1,i_k])*
-                                            Φ(ξ_star[t, i_k]/σ_ξ)
+                            + ((1-τ2)*(y[t]-50000))
 
         end # if
 
@@ -800,7 +784,7 @@ function likelihood_2(parameters; data = data, T = T, β = β, τ_2 = zeros(2))
         Pvec = data_now[:,3] #Wife's participation
         kvec = data_now[:,4] #Wife's experience
 
-        ξ_star = get_ξ_star(parameters, yvec, s, kvec[1]; τ_2 = zeros(2))
+        ξ_star = get_ξ_star_2(parameters, yvec, s, kvec[1]; τ_2 = τ_2)
 
         i_k = 1
 
@@ -858,18 +842,18 @@ x0_2 = res1_2.minimizer
 
 #Now use all the data
 data = original_data
-res2_2 = optimize(likelihood_2, x0_2)
-xhat = res2_2.minimizer
+res2_2 = optimize(likelihood_2, x0_2, iterations = 2000)
+xhat_2 = res2_2.minimizer
 
 
 ################################################################################
 
-function simulate_obs_2(parameters, N, y, s, k_start; T = T, β = β, τ1 = 0.0, τ2 = 0.0)
+function simulate_obs_2(parameters, N, y, s, k_start; T = T, β = β, τ_2)
 
     σ_ξ = parameters[1]
     σ_η = parameters[2]
 
-    ξ_star = get_ξ_star(parameters, y, s, k_start; τ1 = τ1, τ2=τ2)
+    ξ_star = get_ξ_star_2(parameters, y, s, k_start; τ_2=τ_2)
 
     observations = zeros(T*N, 8)
 
@@ -911,7 +895,7 @@ function simulate_obs_2(parameters, N, y, s, k_start; T = T, β = β, τ1 = 0.0,
 end
 
 
-function get_simulated_data_2(x0, N; β = β, T = T, data = original_data, τ1 = 0.0, τ2 = 0.0)
+function get_simulated_data_2(x0, N; β = β, T = T, data = original_data, τ_2)
 
     simulated_data = zeros(T*N*length(unique(data[:,1])), 9)
 
@@ -927,9 +911,9 @@ function get_simulated_data_2(x0, N; β = β, T = T, data = original_data, τ1 =
         s = data[data[:,1].==id, 6][1]
         k_start = data[data[:,1].==id, 4][1]
 
-        get_simulated_data_2[start:stop, 1] .= id
-        get_simulated_data_2[start:stop, 2:end] = simulate_obs_2(x0, N, yvec, s, k_start,
-                                                         τ1 = τ1, τ2=τ2)
+        simulated_data[start:stop, 1] .= id
+        simulated_data[start:stop, 2:end] = simulate_obs_2(x0, N, yvec, s, k_start,
+                                                         τ_2=τ_2)
 
         start += N*T
         stop += N*T
@@ -943,9 +927,58 @@ end
 
 data = original_data
 
-simulated_data_2 = get_simulated_data_2(xhat, 20)
+simulated_data_2 = get_simulated_data_2(xhat_2, 20, τ_2=zeros(2))
 outfile = "simulated_data_2.txt"
 f = open(outfile, "w")
 for i = 1:size(simulated_data_2,1)
 	println(f, simulated_data_2[i,:])
 end
+
+
+
+################################################################################
+#3. Suppose the tax schedule is instead progressive.  The couple pays a 10
+#   percent tax on the first 50,000 and a 20 percent tax on anything above that.
+#   Assume that the couples reported the woman’s earnings accurately to the IRS,
+#   although the wage is misreported in our data. You should therefore use your
+#   estimate of the true wage for this exercise.
+#a) What will happen to the
+#   average number of years worked between the ages 45-54?   What is the total
+#   revenue the IRS will collect?
+#(b)  Do the same for ages 55-64.#####################
+simulated_taxPro_data = get_simulated_data_2(xhat_2, 20; τ_2=[0.1,0.2])
+
+ages = 55:64
+
+simulated_taxPro_LFP_old  = zeros(length(ages))
+simulated_taxPro_LFP_old1 = zeros(length(ages))
+simulated_taxPro_LFP_old2 = zeros(length(ages))
+simulated_taxPro_LFP_old3 = zeros(length(ages))
+simulated_taxPro_LFP_old4 = zeros(length(ages))
+
+for i = 1:length(ages)
+    ### Overall ###
+    simulated_taxPro_LFP_old[i] = mean((simulated_taxPro_data[simulated_taxPro_data[:, 2].== ages[i], 3] .== 1.0))
+
+    ### By education ###
+    simulated_taxPro_LFP_old1[i] = mean((simulated_taxPro_data[(simulated_taxPro_data[:, 2].== ages[i]) .& (simulated_taxPro_data[:,6] .< 12), 3] .== 1.0))
+    simulated_taxPro_LFP_old2[i] = mean((simulated_taxPro_data[(simulated_taxPro_data[:, 2].== ages[i]) .& (simulated_taxPro_data[:,6] .== 12), 3] .== 1.0))
+    simulated_taxPro_LFP_old3[i] = mean((simulated_taxPro_data[(simulated_taxPro_data[:, 2].== ages[i]) .& (simulated_taxPro_data[:,6] .> 12) .& (simulated_taxPro_data[:,6] .< 16), 3] .== 1.0))
+    simulated_taxPro_LFP_old4[i] = mean((simulated_taxPro_data[(simulated_taxPro_data[:, 2].== ages[i]) .& (simulated_taxPro_data[:,6] .> 15), 3] .== 1.0))
+
+end
+
+
+plot(ages, simulated_taxPro_LFP_old, label = "Overall", lw = 3, ylim = (0.0, 1.0),
+     main = "LFP")
+title!("LFP by Age (overall)")
+
+plot(ages, simulated_taxPro_LFP_old1, label = "edu≦11", lw = 3, ylim = (0.35,0.8),
+     main = "LFP")
+plot!(ages, simulated_taxPro_LFP_old2, label = "edu=12", lw = 3, ylim = (0.35,0.8),
+     main = "LFP")
+plot!(ages, simulated_taxPro_LFP_old3, label = "13≦edu≦15", lw = 3, ylim = (0.35, 0.8),
+     main = "LFP")
+plot!(ages, simulated_taxPro_LFP_old4, label = "edu≧16", lw = 3, ylim = (0.35, 0.8),
+     main = "LFP")
+title!("LFP by Age (by education)")
