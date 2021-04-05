@@ -703,6 +703,7 @@ for i = 1:length(ages)
         mean((simulated_data[simulated_data[:, 2].==ages[i], 3] .== 1.0))
 
     ### By education ###
+
     simulated_LFP_old1[i] = mean((
         simulated_data[
             (simulated_data[:, 2].==ages[i]).&(simulated_data[:, 6].<12),
@@ -733,6 +734,12 @@ for i = 1:length(ages)
             3,
         ] .== 1.0
     ))
+  
+    simulated_LFP_old1[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .< 12), 3] .== 1.0))
+    simulated_LFP_old2[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .== 12), 3] .== 1.0))
+    simulated_LFP_old3[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .> 12) .& (simulated_data[:,6] .< 16), 3] .== 1.0))
+    simulated_LFP_old4[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .> 15), 3] .== 1.0))
+
 
 end
 
@@ -865,6 +872,3 @@ end
 
 @show sum(simulated_tax1020_LFP_old);
 
-
-###############################################################################
-###############################################################################
