@@ -2,8 +2,7 @@
 #0. Packages
 ################################################################################
 # Hi
-using Random, Statistics, Distributions, Optim, DelimitedFiles, StatsBase,
-      ForwardDiff, DataFrames
+using Random, Statistics, Distributions, Optim, DelimitedFiles, StatsBase, ForwardDiff, DataFrames, LinearAlgebra
 
 ################################################################################
 #1. Import data
@@ -335,12 +334,18 @@ xhat = res2.minimizer
 ################################################################################
 #6. Calculate standard errors (Optional)
 ################################################################################
-g = ForwardDiff.gradient(likelihood, xhat)
+k = size(xhat)[1]
+omega = zeros(k,k)
+for id in unique(data[:, 1])
+    g = ForwardDiff.gradient(x->likelihood(x,data=data[data[:,1].==id,:]), xhat)
+    global omega += g * g'
+end
 h = ForwardDiff.hessian(likelihood, xhat)
 
-Avar = inv(h) * ((g)'*g) * inv(h)
-
-
+Avar_covar = inv(h) * omega * inv(h)
+Avar = diag(Avar_covar)
+@show xhat
+@show Avar
 
 
 ################################################################################
@@ -734,7 +739,7 @@ for i = 1:length(ages)
             3,
         ] .== 1.0
     ))
-  
+
     simulated_LFP_old1[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .< 12), 3] .== 1.0))
     simulated_LFP_old2[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .== 12), 3] .== 1.0))
     simulated_LFP_old3[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .> 12) .& (simulated_data[:,6] .< 16), 3] .== 1.0))
@@ -871,4 +876,3 @@ for i = 1:length(ages)
 end
 
 @show sum(simulated_tax1020_LFP_old);
-
