@@ -44,7 +44,8 @@ end
 
 #Calculate the current period utility from working not including wife's income
 #Total utility from working would be U1 + wife's wage
-function U1(parameters::AbstractVector{Z}, y, prev_P, s, k; τ1 = 0.0, τ2 = 0.0, L = 50000) where Z
+function U1(parameters::AbstractVector{Z}, y, prev_P, s, k;
+            τ1 = 0.0, τ2 = 0.0, L = 50000) where Z
 
     if y < L
         (1-τ1) * y
@@ -55,7 +56,8 @@ function U1(parameters::AbstractVector{Z}, y, prev_P, s, k; τ1 = 0.0, τ2 = 0.0
 end
 
 #Calculate the current period utility from not working
-function U0(parameters::AbstractVector{Z}, y, prev_P, s, k; τ1 = 0.0, τ2 = 0.0, L = 50000) where Z
+function U0(parameters::AbstractVector{Z}, y, prev_P, s, k;
+            τ1 = 0.0, τ2 = 0.0, L = 50000) where Z
 
     α1 = parameters[7]
     α2 = parameters[8]
@@ -88,17 +90,8 @@ end
 #T = Total number of periods the wife makes labor supply decisions.
 #k_start = Starting experience of the wife.
 
-function get_ξ_star(
-    parameters::AbstractVector{Z},
-    y,
-    s,
-    k_start;
-    T = T,
-    β = β,
-    τ1 = 0.0,
-    τ2 = 0.0,
-    L = 50000,
-) where Z
+function get_ξ_star(parameters::AbstractVector{Z}, y, s, k_start;
+    T = T, β = β, τ1 = 0.0, τ2 = 0.0, L = 50000) where Z
 
     σ_ξ = parameters[1]
 
@@ -127,27 +120,26 @@ function get_ξ_star(
         #The cut-off for the wife where the higher tax kicks in.
         L_wife = maximum([0.0, L - y[t]])
 
-        A =
-            (
-                U0(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) -
-                U1(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) +
-                β * EV[t+1, i_k, prev_P] - β * EV[t+1, i_k+1, prev_P]
-            ) / (1 - τ1)
+        #First, calculate the participation cut-off ξ_star assuming the wife only
+        #pays the first tax τ1.
+        A =(U0(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) -
+            U1(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) +
+            β * EV[t+1, i_k, prev_P] - β * EV[t+1, i_k+1, prev_P]) / (1 - τ1)
         if A > 0
             ξ_star[t, i_k, prev_P] = log(A) - c_log_wage_det
         else
             ξ_star[t, i_k, prev_P] = ξ_lb
         end
 
-        #If the calculation before put the wife above the cut-off, redo calculation
+
+        #If the calculation before put the wife above the cut-off,
+        #redo calculation accounting for the cut-off.
         if exp(c_log_wage_det + ξ_star[t, i_k, prev_P]) > L_wife
 
-            A =
-                (
-                    U0(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) -
-                    U1(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) +
-                    β * EV[t+1, i_k, prev_P] - β * EV[t+1, i_k+1, prev_P] - (1 - τ1) * L_wife
-                ) / (1 - τ2) + L_wife
+            A = (U0(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) -
+                U1(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) +
+                β * EV[t+1, i_k, prev_P] - β * EV[t+1, i_k+1, prev_P] -
+                (1 - τ1) * L_wife) / (1 - τ2) + L_wife
 
             if A > 0
                 ξ_star[t, i_k, prev_P] = log(A) - c_log_wage_det
@@ -161,6 +153,7 @@ function get_ξ_star(
         #page 87
 
         w = exp(c_log_wage_det)
+        #
         ξ_tax2 = ifelse(L_wife > 0, log(L_wife) - c_log_wage_det, ξ_lb)
         ξ_tax2 = maximum([ξ_tax2, ξ_star[t, i_k, prev_P]])
 
@@ -244,7 +237,7 @@ function likelihood(
         #Loop over each time period
         for t = 1:T
 
-            #Update LL if wife works using equaation on page 109 in lecture 3
+            #Update LL if wife works using equation on page 109 in lecture 3
             if Pvec[t] == 1
 
                 u =
