@@ -694,7 +694,7 @@ end
 #   How many years, on average, will women work between those ages, overall and
 #   by education?
 ################################################################################
-ages = 55:64
+ages = 45:54
 
 simulated_LFP_old = zeros(length(ages))
 simulated_LFP_old1 = zeros(length(ages))
@@ -771,6 +771,39 @@ sum(simulated_LFP_old4)
 #            the ages 45-54?   What is the total revenue the IRS will collect?
 #        (b)  Do the same for ages 55-64.
 ################################################################################
+
+## Before tax values
+simulated_beforetax_data = get_simulated_data(xhat, 20; τ1 = 0, τ2 = 0)
+
+ages = 45:54
+
+simulated_beforetax_LFP_old = zeros(length(ages))
+
+for i = 1:length(ages)
+    ### Overall ###
+    simulated_beforetax_LFP_old[i] = mean((
+        simulated_beforetax_data[simulated_beforetax_data[:, 2].==ages[i], 3] .== 1.0
+    ))
+
+end
+
+@show sum(simulated_beforetax_LFP_old);
+
+ages = 55:64
+
+simulated_beforetax_LFP_old = zeros(length(ages))
+
+for i = 1:length(ages)
+    ### Overall ###
+    simulated_beforetax_LFP_old[i] = mean((
+        simulated_beforetax_data[simulated_beforetax_data[:, 2].==ages[i], 3] .== 1.0
+    ))
+
+end
+
+@show sum(simulated_beforetax_LFP_old);
+
+## After tax values
 simulated_tax10_data = get_simulated_data(xhat, 20; τ1 = 0.1, τ2 = 0.1)
 
 ages = 45:54
@@ -812,6 +845,40 @@ end
 #   revenue the IRS will collect? (b)  Do the same for ages 55-64.
 ################################################################################
 
+## Before tax values
+simulated_beforetax1020_data = get_simulated_data(xhat, 20;
+                                            τ1 = 0, τ2 = 0, L = 50000)
+
+ages = 45:54
+
+simulated_beforetax1020_LFP_old = zeros(length(ages))
+
+for i = 1:length(ages)
+    ### Overall ###
+    simulated_beforetax1020_LFP_old[i] = mean((
+        simulated_beforetax1020_data[simulated_beforetax1020_data[:, 2].==ages[i], 3] .== 1.0
+    ))
+
+end
+
+
+@show sum(simulated_beforetax1020_LFP_old);
+
+ages = 55:64
+
+simulated_beforetax1020_LFP_old = zeros(length(ages))
+
+for i = 1:length(ages)
+    ### Overall ###
+    simulated_beforetax1020_LFP_old[i] = mean((
+        simulated_beforetax1020_data[simulated_beforetax1020_data[:, 2].==ages[i], 3] .== 1.0
+    ))
+
+end
+
+@show sum(simulated_beforetax1020_LFP_old);
+
+## After tax values
 simulated_tax1020_data = get_simulated_data(xhat, 20;
                                             τ1 = 0.1, τ2 = 0.2, L = 50000)
 
