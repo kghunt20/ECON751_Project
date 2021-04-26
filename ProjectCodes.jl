@@ -794,6 +794,107 @@ plot!(
 title!("LFP by Age (by education)")
 
 
+
+###For comparison
+ages = 45:65
+
+simulated_LFP_old = zeros(length(ages))
+simulated_LFP_old1 = zeros(length(ages))
+simulated_LFP_old2 = zeros(length(ages))
+simulated_LFP_old3 = zeros(length(ages))
+simulated_LFP_old4 = zeros(length(ages))
+
+for i = 1:length(ages)
+    ### Overall ###
+    simulated_LFP_old[i] =
+        mean((simulated_data[simulated_data[:, 2].==ages[i], 3] .== 1.0))
+
+    ### By education ###
+
+    simulated_LFP_old1[i] = mean((
+        simulated_data[
+            (simulated_data[:, 2].==ages[i]).&(simulated_data[:, 6].<12),
+            3,
+        ] .== 1.0
+    ))
+    simulated_LFP_old2[i] = mean((
+        simulated_data[
+            (simulated_data[:, 2].==ages[i]).&(simulated_data[:, 6].==12),
+            3,
+        ] .== 1.0
+    ))
+    simulated_LFP_old3[i] = mean((
+        simulated_data[
+            (simulated_data[
+                :,
+                2,
+            ].==ages[i]).&(simulated_data[
+                :,
+                6,
+            ].>12).&(simulated_data[:, 6].<16),
+            3,
+        ] .== 1.0
+    ))
+    simulated_LFP_old4[i] = mean((
+        simulated_data[
+            (simulated_data[:, 2].==ages[i]).&(simulated_data[:, 6].>15),
+            3,
+        ] .== 1.0
+    ))
+
+    simulated_LFP_old1[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .< 12), 3] .== 1.0))
+    simulated_LFP_old2[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .== 12), 3] .== 1.0))
+    simulated_LFP_old3[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .> 12) .& (simulated_data[:,6] .< 16), 3] .== 1.0))
+    simulated_LFP_old4[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .> 15), 3] .== 1.0))
+
+
+end
+
+
+plot(
+    ages,
+    simulated_LFP_old,
+    label = "Overall",
+    lw = 3,
+    ylim = (0.35, 0.8),
+    main = "LFP",
+)
+title!("LFP by Age (overall)")
+
+plot(
+    ages,
+    simulated_LFP_old1,
+    label = "edu≦11",
+    lw = 3,
+    ylim = (0.35, 0.8),
+    main = "LFP",
+)
+plot!(
+    ages,
+    simulated_LFP_old2,
+    label = "edu=12",
+    lw = 3,
+    ylim = (0.35, 0.8),
+    main = "LFP",
+)
+plot!(
+    ages,
+    simulated_LFP_old3,
+    label = "13≦edu≦15",
+    lw = 3,
+    ylim = (0.35, 0.8),
+    main = "LFP",
+)
+plot!(
+    ages,
+    simulated_LFP_old4,
+    label = "edu≧16",
+    lw = 3,
+    ylim = (0.35, 0.8),
+    main = "LFP",
+)
+title!("LFP by Age (by education)")
+
 ################################################################################
 #2. Assume that the government introduces a flat income tax on total earnings
 #   (husband + wife) of 10 percent. Assume that couples report the woman’s
@@ -804,6 +905,24 @@ title!("LFP by Age (by education)")
 #            the ages 45-54?   What is the total revenue the IRS will collect?
 #        (b)  Do the same for ages 55-64.
 ################################################################################
+### before tax values
+
+simulated_beforetax_data = get_simulated_data(xhat, 20; τ1 = 0, τ2 = 0)
+ages = 55:64
+
+simulated_beforetax_LFP_old = zeros(length(ages))
+
+for i = 1:length(ages)
+    ### Overall ###
+    simulated_beforetax_LFP_old[i] = mean((
+        simulated_beforetax_data[simulated_beforetax_data[:, 2].==ages[i], 3] .== 1.0
+    ))
+
+end
+
+@show sum(simulated_beforetax_LFP_old);
+
+### After tax values
 simulated_tax10_data = get_simulated_data(xhat, 20; τ1 = 0.1, τ2 = 0.1)
 
 ages = 45:54
