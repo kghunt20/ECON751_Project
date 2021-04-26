@@ -748,50 +748,17 @@ for i = 1:length(ages)
 
 end
 
+#Average years worked all women
+sum(simulated_LFP_old)
+#Average years worked less than high school
+sum(simulated_LFP_old1)
+#Average years worked high school
+sum(simulated_LFP_old2)
+#Average years worked some colle college
+sum(simulated_LFP_old3)
+#Average years worked college
+sum(simulated_LFP_old4)
 
-plot(
-    ages,
-    simulated_LFP_old,
-    label = "Overall",
-    lw = 3,
-    ylim = (0.35, 0.8),
-    main = "LFP",
-)
-title!("LFP by Age (overall)")
-
-plot(
-    ages,
-    simulated_LFP_old1,
-    label = "edu≦11",
-    lw = 3,
-    ylim = (0.35, 0.8),
-    main = "LFP",
-)
-plot!(
-    ages,
-    simulated_LFP_old2,
-    label = "edu=12",
-    lw = 3,
-    ylim = (0.35, 0.8),
-    main = "LFP",
-)
-plot!(
-    ages,
-    simulated_LFP_old3,
-    label = "13≦edu≦15",
-    lw = 3,
-    ylim = (0.35, 0.8),
-    main = "LFP",
-)
-plot!(
-    ages,
-    simulated_LFP_old4,
-    label = "edu≧16",
-    lw = 3,
-    ylim = (0.35, 0.8),
-    main = "LFP",
-)
-title!("LFP by Age (by education)")
 
 
 ################################################################################
