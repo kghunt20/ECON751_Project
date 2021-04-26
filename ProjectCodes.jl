@@ -344,9 +344,14 @@ h = ForwardDiff.hessian(likelihood, xhat)
 
 Avar_covar = inv(h) * omega * inv(h)
 Avar = diag(Avar_covar)
+SE = Avar.^(1/2)
 @show xhat
-@show Avar
+@show SE
 
+using DelimitedFiles
+
+writedlm("xhat.csv", xhat)
+writedlm("se.csv", SE)
 
 ################################################################################
 #*******************************************************************************
@@ -496,8 +501,8 @@ original_avg10[3] = overall_lfp(13, 15, data)
 original_avg10[4] = overall_lfp(16, 54, data)
 original_avg10[5] = overall_lfp(0, 54, data)
 
-simulated_avg10
-original_avg10
+@show simulated_avg10
+@show original_avg10
 
 ################################################################################
 #2. The fraction of women working at each age.
@@ -526,7 +531,9 @@ plot(
     main = "LFP",
 )
 plot!(ages, original_LFP, label = "Original Data", lw = 3)
-title!("LFP")
+xlabel!("Age")
+title!("Fraction of LFP by Age")
+savefig("lfp_by_age.png")
 
 ################################################################################
 #3. The fraction of women working by work experience levels (a) 10 years or
@@ -556,6 +563,9 @@ original_byK[1] = lfp_byK(0, 10, data)
 original_byK[2] = lfp_byK(11, 20, data)
 original_byK[3] = lfp_byK(21, 54, data)
 
+@show simulated_byK
+@show original_byK
+
 ################################################################################
 #4. The mean wage of working women overall, by the four education classes in #1
 #   above and by age.
@@ -569,7 +579,8 @@ ss = combine(gdf, :x5 => mean)
 simulated_wage = mean(ss[:, 3])
 original_wage = mean(original_data[original_data[:, 3].==1, 5])
 
-
+@show simulated_wage
+@show original_wage
 
 ### by education class ###
 simulated_wage_byedu = zeros(length(1:4))
@@ -603,6 +614,9 @@ original_wage_byedu[2] = wage_byedu(12, 12, data)
 original_wage_byedu[3] = wage_byedu(13, 15, data)
 original_wage_byedu[4] = wage_byedu(16, 54, data)
 
+@show simulated_wage_byedu
+@show original_wage_byedu
+
 ### by age ###
 ages = 45:54
 simulated_wage_byage = zeros(length(ages))
@@ -633,7 +647,9 @@ plot(
     main = "Wage",
 )
 plot!(ages, original_wage_byage, label = "Original Data", lw = 3)
-title!("Wage")
+xaxis!("Age")
+title!("Mean Wage by Age")
+savefig("mean_wage_byage.png")
 ################################################################################
 #5. The 2x2 table of labor force participation by lagged labor force
 #   participation.
