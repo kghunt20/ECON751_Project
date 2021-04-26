@@ -337,9 +337,14 @@ h = ForwardDiff.hessian(likelihood, xhat)
 
 Avar_covar = inv(h) * omega * inv(h)
 Avar = diag(Avar_covar)
+SE = Avar.^(1/2)
 @show xhat
-@show Avar
+@show SE
 
+using DelimitedFiles
+
+writedlm("xhat.csv", xhat)
+writedlm("se.csv", SE)
 
 ################################################################################
 #*******************************************************************************
@@ -489,8 +494,8 @@ original_avg10[3] = overall_lfp(13, 15, data)
 original_avg10[4] = overall_lfp(16, 54, data)
 original_avg10[5] = overall_lfp(0, 54, data)
 
-simulated_avg10
-original_avg10
+@show simulated_avg10
+@show original_avg10
 
 ################################################################################
 #2. The fraction of women working at each age.
@@ -519,7 +524,9 @@ plot(
     main = "LFP",
 )
 plot!(ages, original_LFP, label = "Original Data", lw = 3)
-title!("LFP")
+xlabel!("Age")
+title!("Fraction of LFP by Age")
+savefig("lfp_by_age.png")
 
 ################################################################################
 #3. The fraction of women working by work experience levels (a) 10 years or
@@ -549,6 +556,9 @@ original_byK[1] = lfp_byK(0, 10, data)
 original_byK[2] = lfp_byK(11, 20, data)
 original_byK[3] = lfp_byK(21, 54, data)
 
+@show simulated_byK
+@show original_byK
+
 ################################################################################
 #4. The mean wage of working women overall, by the four education classes in #1
 #   above and by age.
@@ -562,7 +572,8 @@ ss = combine(gdf, :x5 => mean)
 simulated_wage = mean(ss[:, 3])
 original_wage = mean(original_data[original_data[:, 3].==1, 5])
 
-
+@show simulated_wage
+@show original_wage
 
 ### by education class ###
 simulated_wage_byedu = zeros(length(1:4))
@@ -596,6 +607,9 @@ original_wage_byedu[2] = wage_byedu(12, 12, data)
 original_wage_byedu[3] = wage_byedu(13, 15, data)
 original_wage_byedu[4] = wage_byedu(16, 54, data)
 
+@show simulated_wage_byedu
+@show original_wage_byedu
+
 ### by age ###
 ages = 45:54
 simulated_wage_byage = zeros(length(ages))
@@ -626,7 +640,9 @@ plot(
     main = "Wage",
 )
 plot!(ages, original_wage_byage, label = "Original Data", lw = 3)
-title!("Wage")
+xaxis!("Age")
+title!("Mean Wage by Age")
+savefig("mean_wage_byage.png")
 ################################################################################
 #5. The 2x2 table of labor force participation by lagged labor force
 #   participation.
@@ -787,6 +803,107 @@ plot!(
 title!("LFP by Age (by education)")
 
 
+
+###For comparison
+ages = 45:65
+
+simulated_LFP_old = zeros(length(ages))
+simulated_LFP_old1 = zeros(length(ages))
+simulated_LFP_old2 = zeros(length(ages))
+simulated_LFP_old3 = zeros(length(ages))
+simulated_LFP_old4 = zeros(length(ages))
+
+for i = 1:length(ages)
+    ### Overall ###
+    simulated_LFP_old[i] =
+        mean((simulated_data[simulated_data[:, 2].==ages[i], 3] .== 1.0))
+
+    ### By education ###
+
+    simulated_LFP_old1[i] = mean((
+        simulated_data[
+            (simulated_data[:, 2].==ages[i]).&(simulated_data[:, 6].<12),
+            3,
+        ] .== 1.0
+    ))
+    simulated_LFP_old2[i] = mean((
+        simulated_data[
+            (simulated_data[:, 2].==ages[i]).&(simulated_data[:, 6].==12),
+            3,
+        ] .== 1.0
+    ))
+    simulated_LFP_old3[i] = mean((
+        simulated_data[
+            (simulated_data[
+                :,
+                2,
+            ].==ages[i]).&(simulated_data[
+                :,
+                6,
+            ].>12).&(simulated_data[:, 6].<16),
+            3,
+        ] .== 1.0
+    ))
+    simulated_LFP_old4[i] = mean((
+        simulated_data[
+            (simulated_data[:, 2].==ages[i]).&(simulated_data[:, 6].>15),
+            3,
+        ] .== 1.0
+    ))
+
+    simulated_LFP_old1[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .< 12), 3] .== 1.0))
+    simulated_LFP_old2[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .== 12), 3] .== 1.0))
+    simulated_LFP_old3[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .> 12) .& (simulated_data[:,6] .< 16), 3] .== 1.0))
+    simulated_LFP_old4[i] = mean((simulated_data[(simulated_data[:, 2].== ages[i]) .& (simulated_data[:,6] .> 15), 3] .== 1.0))
+
+
+end
+
+
+plot(
+    ages,
+    simulated_LFP_old,
+    label = "Overall",
+    lw = 3,
+    ylim = (0.35, 0.8),
+    main = "LFP",
+)
+title!("LFP by Age (overall)")
+
+plot(
+    ages,
+    simulated_LFP_old1,
+    label = "edu≦11",
+    lw = 3,
+    ylim = (0.35, 0.8),
+    main = "LFP",
+)
+plot!(
+    ages,
+    simulated_LFP_old2,
+    label = "edu=12",
+    lw = 3,
+    ylim = (0.35, 0.8),
+    main = "LFP",
+)
+plot!(
+    ages,
+    simulated_LFP_old3,
+    label = "13≦edu≦15",
+    lw = 3,
+    ylim = (0.35, 0.8),
+    main = "LFP",
+)
+plot!(
+    ages,
+    simulated_LFP_old4,
+    label = "edu≧16",
+    lw = 3,
+    ylim = (0.35, 0.8),
+    main = "LFP",
+)
+title!("LFP by Age (by education)")
+
 ################################################################################
 #2. Assume that the government introduces a flat income tax on total earnings
 #   (husband + wife) of 10 percent. Assume that couples report the woman’s
@@ -797,6 +914,24 @@ title!("LFP by Age (by education)")
 #            the ages 45-54?   What is the total revenue the IRS will collect?
 #        (b)  Do the same for ages 55-64.
 ################################################################################
+### before tax values
+
+simulated_beforetax_data = get_simulated_data(xhat, 20; τ1 = 0, τ2 = 0)
+ages = 55:64
+
+simulated_beforetax_LFP_old = zeros(length(ages))
+
+for i = 1:length(ages)
+    ### Overall ###
+    simulated_beforetax_LFP_old[i] = mean((
+        simulated_beforetax_data[simulated_beforetax_data[:, 2].==ages[i], 3] .== 1.0
+    ))
+
+end
+
+@show sum(simulated_beforetax_LFP_old);
+
+### After tax values
 simulated_tax10_data = get_simulated_data(xhat, 20; τ1 = 0.1, τ2 = 0.1)
 
 ages = 45:54
@@ -835,6 +970,248 @@ end
 #   although the wage is misreported in our data. You should therefore use your
 #   estimate of the true wage for this exercise.a) What will happen to the
 #   average number of years worked between the ages 45-54?   What is the total
+<<<<<<< HEAD
+#   revenue the IRS will collect?
+#(b)  Do the same for ages 55-64.
+################################################################################
+
+
+#Calculate the current period utility from working not including wife's income
+#Total utility from working would be U1 + wife's wage
+function U1_2(parameters, y, s, k; τ_2 )
+    τ1 = τ_2[1]
+    τ2 = τ_2[2]
+    if y < 50000
+        (1-τ1)*y
+    else
+        (1-τ1)*(50000) + (1-τ2)*(y-50000)
+    end
+end
+
+#Calculate the current period utility from not working
+function U0_2(parameters, y, s, k; τ_2)
+    τ1 = τ_2[1]
+    τ2 = τ_2[2]
+
+    α1 = parameters[7]
+    α2 = parameters[8]
+
+    if y < 50000
+        (1-τ1)*y + α2*y + α1
+    else
+        (1-τ1)*(50000) + (1-τ2)*(y-50000) + α2*y + α1
+    end
+
+end
+
+
+#Solve the model for a given set of parameters and husbands income profile y,
+#and education level for the wife s.
+#T = Total number of periods the wife makes labor supply decisions.
+#k_start = Starting experience of the wife.
+
+function get_ξ_star_2(parameters, y, s, k_start; T=T, β = β, τ_2=τ_2)
+    τ1 = τ_2[1]
+    τ2 = τ_2[2]
+
+    σ_ξ = parameters[1]
+    #Generate a grid of possible experience the wife could achieve
+    k_grid = k_start:(k_start + T-1)
+
+    #Expected value function EV(t, k)
+    EV = zeros(T+1, T+1)
+    #Participation cut-off ϵ^* (ϵ_star)
+    ξ_star = zeros(T, T)
+
+    #A lower bound for ξ in the calculations below
+    ξ_lb = quantile(Normal(0.0, σ_ξ), 0.0001)
+
+    #Solve the model recursively
+    for t = reverse(1:T), i_k = 1:t
+
+        #Define current experience for the wife
+        k = k_grid[i_k]
+
+        #Deterministic part of wife's log wage. "c_" stands for current
+        c_log_wage_det = log_wage_det(parameters, s, k, t+44, y[t])
+
+        #Calculate ξ_star using equation on page 84 of Lecture 3
+
+
+            A = (U0_2(parameters, y[t], s, k; τ_2=τ_2) -
+                U1_2(parameters, y[t], s, k; τ_2=τ_2) +
+                β*EV[t+1, i_k] - β*EV[t+1, i_k + 1])/(1-τ1)
+
+
+        if A > 0
+            ξ_star[t, i_k] = log(A) - c_log_wage_det
+        else
+            ξ_star[t, i_k] = ξ_lb
+        end
+
+        #Calculate the expect value function (EV) using equation in lecture 3
+        #page 87
+
+        if y[t] < 50000
+            EV[t, i_k] = ((1-τ1)*y[t] + β*EV[t+1, i_k + 1] ) * (1-Φ(ξ_star[t,i_k]/σ_ξ)) +
+                         (1-τ1)*exp(c_log_wage_det)*exp(0.5*σ_ξ^2)*
+                            (1-Φ((ξ_star[t,i_k]-σ_ξ^2)/σ_ξ)) +
+                        (U0_2(parameters, y[t], s, k; τ_2=τ_2) + β*EV[t+1,i_k])*
+                            Φ(ξ_star[t, i_k]/σ_ξ)
+
+        else
+            EV[t, i_k] = ((1-τ1)*50000 + β*EV[t+1, i_k + 1] ) * (1-Φ(ξ_star[t,i_k]/σ_ξ)) +
+                         (1-τ1)*exp(c_log_wage_det)*exp(0.5*σ_ξ^2)*
+                            (1-Φ((ξ_star[t,i_k]-σ_ξ^2)/σ_ξ)) +
+                        (U0_2(parameters, y[t], s, k; τ_2=τ_2) + β*EV[t+1,i_k])*
+                            Φ(ξ_star[t, i_k]/σ_ξ)
+                            + ((1-τ2)*(y[t]-50000))
+
+        end # if
+
+
+    end
+
+    #Deliverables
+    ξ_star
+
+end
+
+################################################################################
+#4. Likelihood Function
+################################################################################
+
+function likelihood_2(parameters; data = data, T = T, β = β, τ_2 = zeros(2))
+    τ1 = τ_2[1]
+    τ2 = τ_2[2]
+
+    σ_ξ = parameters[1]
+    σ_η = parameters[2]
+
+    #Initialize log-likelihood
+    LL = 0.0
+
+    #Relevant parameters for likelihood function
+    σ_u = (σ_ξ^2 + σ_η^2)^0.5
+    ρ = σ_ξ/σ_u
+
+    #Loop over every couple in the data
+    for id in unique(data[:,1])
+
+        #Create subset of data for current wife
+        data_now = data[data[:,1] .== id, :]
+
+        #Unpack data_now
+        yvec = data_now[:,8] #Husbands income
+        wOvec = data_now[:,5] #Wife's observed income
+        s = data_now[1,6] #Wife's schooling
+        Pvec = data_now[:,3] #Wife's participation
+        kvec = data_now[:,4] #Wife's experience
+
+        ξ_star = get_ξ_star_2(parameters, yvec, s, kvec[1]; τ_2 = τ_2)
+
+        i_k = 1
+
+        #Loop over each time period
+        for t = 1:T
+
+            #Update LL if wife works using equaation on page 109 in lecture 3
+            if Pvec[t] == 1
+
+                u = log(wOvec[t]) -
+                    log_wage_det(parameters, s, kvec[t], t+44, yvec[t])
+                A = (ξ_star[t, i_k] - ρ*σ_ξ/σ_u*u)/(σ_ξ*(1-ρ^2)^0.5)
+                B = pdf(Normal(), u/σ_u)/σ_u
+                LL -= log( (1.0-cdf(Normal(), A))*B)
+
+                i_k += 1
+
+            #Update LL if wife doesn't work using equation on page 109 of lecture 3.
+            elseif Pvec[t] == 0
+
+                LL -= log(cdf(Normal(), ξ_star[t, i_k]/σ_ξ))
+
+            end
+
+        end
+
+    end
+
+    @show LL
+
+end
+
+################################################################################
+#5. Estimate parameters by maximum likelihood
+################################################################################
+
+β = 0.95
+#Number of periods the wife makes labor supply decisions.
+T = 20
+
+#Initial guess
+x0 =  [0.5990950138078999, 0.1892819256699379, 9.295133566845593,
+       0.046655500082713575, 0.014359272734607026, -0.00014647900745677907,
+       24126.810548022222, 0.00978890544903218, 0.0, 0.0, 0.0, 0.0]
+
+#Start with only 250 couples of data to get a good initial guess quickly
+#couples = sample(unique(store_data[:,1]), 100,  replace = false)
+data = original_data
+couples = sample(unique(data[:,1]), 250, replace = false)
+data = original_data[subset.(original_data[:,1]),:]
+res1_2 = optimize(likelihood_2, x0)
+
+#Update initial guess
+x0_2 = res1_2.minimizer
+
+#Now use all the data
+data = original_data
+res2_2 = optimize(likelihood_2, x0_2, iterations = 2000)
+xhat_2 = res2_2.minimizer
+
+
+################################################################################
+
+function simulate_obs_2(parameters, N, y, s, k_start; T = T, β = β, τ_2)
+
+    σ_ξ = parameters[1]
+    σ_η = parameters[2]
+
+    ξ_star = get_ξ_star_2(parameters, y, s, k_start; τ_2=τ_2)
+
+    observations = zeros(T*N, 8)
+
+
+    i = 1
+    for n = 1:N
+
+        i_k = 1
+        k = k_start
+        wO = 0.0
+        k_prime = k
+        P = 0.0
+
+        for t = 1:T
+
+            ξ = randn()*σ_ξ
+
+            if ξ > ξ_star[t, i_k]
+                P = 1
+                wO = exp(log_wage_det(parameters, s, k_start + i_k -1, t+44, y[t]) +
+                         randn()*σ_η + ξ)
+                k_prime = k+1
+                i_k = i_k + 1
+            else
+                P = 0
+                wO = -9.0
+            end
+
+            observations[i,:] = [44+t, P, k, wO, s, 1, y[t],n]
+            k = k_prime
+            i+=1
+
+        end
+=======
 #   revenue the IRS will collect? (b)  Do the same for ages 55-64.
 ################################################################################
 
@@ -842,6 +1219,7 @@ simulated_tax1020_data = get_simulated_data(xhat, 20;
                                             τ1 = 0.1, τ2 = 0.2, L = 50000)
 
 ages = 45:54
+>>>>>>> 096d83c2dc1bbb87c94a996fe76d14efe93e5373
 
 simulated_tax1020_LFP_old = zeros(length(ages))
 
@@ -854,9 +1232,34 @@ for i = 1:length(ages)
 end
 
 
+<<<<<<< HEAD
+function get_simulated_data_2(x0, N; β = β, T = T, data = original_data, τ_2)
+
+    simulated_data = zeros(T*N*length(unique(data[:,1])), 9)
+
+    start = 1
+    stop = N*T
+
+    for id in unique(data[:,1])
+
+        #Order of variables in data: id, age, lfp, x, wage, edu, lfp0, hinc,
+        #rep_id
+
+        yvec = data[data[:,1].==id, 8]
+        s = data[data[:,1].==id, 6][1]
+        k_start = data[data[:,1].==id, 4][1]
+
+        simulated_data[start:stop, 1] .= id
+        simulated_data[start:stop, 2:end] = simulate_obs_2(x0, N, yvec, s, k_start,
+                                                         τ_2=τ_2)
+
+        start += N*T
+        stop += N*T
+=======
 @show sum(simulated_tax1020_LFP_old);
 
 ages = 55:64
+>>>>>>> 096d83c2dc1bbb87c94a996fe76d14efe93e5373
 
 simulated_tax1020_LFP_old = zeros(length(ages))
 
@@ -868,4 +1271,65 @@ for i = 1:length(ages)
 
 end
 
+<<<<<<< HEAD
+
+data = original_data
+
+simulated_data_2 = get_simulated_data_2(xhat_2, 20, τ_2=zeros(2))
+outfile = "simulated_data_2.txt"
+f = open(outfile, "w")
+for i = 1:size(simulated_data_2,1)
+	println(f, simulated_data_2[i,:])
+end
+
+
+
+################################################################################
+#3. Suppose the tax schedule is instead progressive.  The couple pays a 10
+#   percent tax on the first 50,000 and a 20 percent tax on anything above that.
+#   Assume that the couples reported the woman’s earnings accurately to the IRS,
+#   although the wage is misreported in our data. You should therefore use your
+#   estimate of the true wage for this exercise.
+#a) What will happen to the
+#   average number of years worked between the ages 45-54?   What is the total
+#   revenue the IRS will collect?
+#(b)  Do the same for ages 55-64.#####################
+simulated_taxPro_data = get_simulated_data_2(xhat_2, 20; τ_2=[0.1,0.2])
+
+ages = 55:64
+
+simulated_taxPro_LFP_old  = zeros(length(ages))
+simulated_taxPro_LFP_old1 = zeros(length(ages))
+simulated_taxPro_LFP_old2 = zeros(length(ages))
+simulated_taxPro_LFP_old3 = zeros(length(ages))
+simulated_taxPro_LFP_old4 = zeros(length(ages))
+
+for i = 1:length(ages)
+    ### Overall ###
+    simulated_taxPro_LFP_old[i] = mean((simulated_taxPro_data[simulated_taxPro_data[:, 2].== ages[i], 3] .== 1.0))
+
+    ### By education ###
+    simulated_taxPro_LFP_old1[i] = mean((simulated_taxPro_data[(simulated_taxPro_data[:, 2].== ages[i]) .& (simulated_taxPro_data[:,6] .< 12), 3] .== 1.0))
+    simulated_taxPro_LFP_old2[i] = mean((simulated_taxPro_data[(simulated_taxPro_data[:, 2].== ages[i]) .& (simulated_taxPro_data[:,6] .== 12), 3] .== 1.0))
+    simulated_taxPro_LFP_old3[i] = mean((simulated_taxPro_data[(simulated_taxPro_data[:, 2].== ages[i]) .& (simulated_taxPro_data[:,6] .> 12) .& (simulated_taxPro_data[:,6] .< 16), 3] .== 1.0))
+    simulated_taxPro_LFP_old4[i] = mean((simulated_taxPro_data[(simulated_taxPro_data[:, 2].== ages[i]) .& (simulated_taxPro_data[:,6] .> 15), 3] .== 1.0))
+
+end
+
+
+plot(ages, simulated_taxPro_LFP_old, label = "Overall", lw = 3, ylim = (0.0, 1.0),
+     main = "LFP")
+title!("LFP by Age (overall)")
+
+plot(ages, simulated_taxPro_LFP_old1, label = "edu≦11", lw = 3, ylim = (0.35,0.8),
+     main = "LFP")
+plot!(ages, simulated_taxPro_LFP_old2, label = "edu=12", lw = 3, ylim = (0.35,0.8),
+     main = "LFP")
+plot!(ages, simulated_taxPro_LFP_old3, label = "13≦edu≦15", lw = 3, ylim = (0.35, 0.8),
+     main = "LFP")
+plot!(ages, simulated_taxPro_LFP_old4, label = "edu≧16", lw = 3, ylim = (0.35, 0.8),
+     main = "LFP")
+title!("LFP by Age (by education)")
+=======
 @show sum(simulated_tax1020_LFP_old);
+>>>>>>> 096d83c2dc1bbb87c94a996fe76d14efe93e5373
