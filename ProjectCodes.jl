@@ -811,6 +811,8 @@ total_family_income = simulated_tax10_data[:,8] + simulated_tax10_data[:,5].*sim
 
 #Show tax revenue for ages < 55
 @show sum(total_family_income[simulated_tax10_data[:,2] .< 55] .* 0.1)
+#Show tax revenue for ages > 55
+@show sum(total_family_income[simulated_tax10_data[:,2] .> 55] .* 0.1)
 
 
 ages = 45:54
@@ -897,13 +899,16 @@ total_family_incomepro = simulated_tax1020_data[:,8] + simulated_tax1020_data[:,
 taxprorevenue1 = zeros(length(total_family_incomepro))
 taxprorevenue2 = zeros(length(total_family_incomepro))
 taxprorevenue = zeros(length(total_family_incomepro))
+
 for i = 1:length(total_family_incomepro)
+
     if total_family_incomepro[i] .< 50000
         taxprorevenue1[i] = sum(total_family_incomepro[simulated_tax1020_data[:,2] .< 55] * 0.1)
     else
         taxprorevenue2[i] = sum((total_family_incomepro[simulated_tax1020_data[:,2] .< 55] .- 50000) * 0.2)
     end
-taxprorevenue[i]= taxprorevenue1[i] + taxprorevenue2[i]
+
+    taxprorevenue[i]= taxprorevenue1[i] + taxprorevenue2[i]
 end
 
 @show sum(taxprorevenue)
@@ -913,13 +918,14 @@ end
 taxprorevenue10 = zeros(length(total_family_incomepro))
 taxprorevenue20 = zeros(length(total_family_incomepro))
 taxprorevenue00 = zeros(length(total_family_incomepro))
+
 for i = 1:length(total_family_incomepro)
     if total_family_incomepro[i] .< 50000
         taxprorevenue10[i] = sum(total_family_incomepro[simulated_tax1020_data[:,2] .> 55] * 0.1)
     else
         taxprorevenue20[i] = sum((total_family_incomepro[simulated_tax1020_data[:,2] .> 55] .- 50000) * 0.2)
     end
-taxprorevenue00[i]= taxprorevenue10[i] + taxprorevenue20[i]
+    taxprorevenue00[i]= taxprorevenue10[i] + taxprorevenue20[i]
 end
 
 @show sum(taxprorevenue00)
