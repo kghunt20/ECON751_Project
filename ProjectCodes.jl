@@ -810,7 +810,7 @@ simulated_tax10_data = get_simulated_data(xhat, 20; τ1 = 0.1, τ2 = 0.1)
 total_family_income = simulated_tax10_data[:,8] + simulated_tax10_data[:,5].*simulated_tax10_data[:,3]
 
 #Show tax revenue for ages < 55
-sum(total_family_income[simulated_tax10_data[:,2] .< 55] .* 0.1)
+@show sum(total_family_income[simulated_tax10_data[:,2] .< 55] .* 0.1)
 
 
 ages = 45:54
@@ -827,6 +827,9 @@ end
 @show sum(simulated_tax10_LFP_old);
 
 ages = 55:64
+
+#Show tax revenue for ages > 55
+@show sum(total_family_income[simulated_tax10_data[:,2] .> 55] .* 0.1)
 
 simulated_tax10_LFP_old = zeros(length(ages))
 
@@ -888,6 +891,40 @@ end
 simulated_tax1020_data = get_simulated_data(xhat, 20;
                                             τ1 = 0.1, τ2 = 0.2, L = 50000)
 
+total_family_incomepro = simulated_tax1020_data[:,8] + simulated_tax1020_data[:,5].*simulated_tax1020_data[:,3]
+
+#Show tax revenue for ages < 55
+taxprorevenue1 = zeros(length(total_family_incomepro))
+taxprorevenue2 = zeros(length(total_family_incomepro))
+taxprorevenue = zeros(length(total_family_incomepro))
+for i = 1:length(total_family_incomepro)
+    if total_family_incomepro[i] .< 50000
+        taxprorevenue1[i] = sum(total_family_incomepro[simulated_tax1020_data[:,2] .< 55] * 0.1)
+    else
+        taxprorevenue2[i] = sum((total_family_incomepro[simulated_tax1020_data[:,2] .< 55] .- 50000) * 0.2)
+    end
+taxprorevenue[i]= taxprorevenue1[i] + taxprorevenue2[i]
+end
+
+@show sum(taxprorevenue)
+
+
+#Show tax revenue for ages > 55
+taxprorevenue10 = zeros(length(total_family_incomepro))
+taxprorevenue20 = zeros(length(total_family_incomepro))
+taxprorevenue00 = zeros(length(total_family_incomepro))
+for i = 1:length(total_family_incomepro)
+    if total_family_incomepro[i] .< 50000
+        taxprorevenue10[i] = sum(total_family_incomepro[simulated_tax1020_data[:,2] .> 55] * 0.1)
+    else
+        taxprorevenue20[i] = sum((total_family_incomepro[simulated_tax1020_data[:,2] .> 55] .- 50000) * 0.2)
+    end
+taxprorevenue00[i]= taxprorevenue10[i] + taxprorevenue20[i]
+end
+
+@show sum(taxprorevenue00)
+
+##years worked
 ages = 45:54
 
 simulated_tax1020_LFP_old = zeros(length(ages))
