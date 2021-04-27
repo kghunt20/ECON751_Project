@@ -754,7 +754,7 @@ sum(simulated_LFP_old)
 sum(simulated_LFP_old1)
 #Average years worked high school
 sum(simulated_LFP_old2)
-#Average years worked some colle college
+#Average years worked some college
 sum(simulated_LFP_old3)
 #Average years worked college
 sum(simulated_LFP_old4)
@@ -806,8 +806,14 @@ end
 ## After tax values
 simulated_tax10_data = get_simulated_data(xhat, 20; τ1 = 0.1, τ2 = 0.1)
 
-ages = 45:54
+#Create a vector of total family income: husband income plus wife income * participation
+total_family_income = simulated_tax10_data[:,8] + simulated_tax10_data[:,5].*simulated_tax10_data[:,3]
 
+#Show tax revenue for ages < 55
+sum(total_family_income[simulated_tax10_data[:,2] .< 55] .* 0.1)
+
+
+ages = 45:54
 simulated_tax10_LFP_old = zeros(length(ages))
 
 for i = 1:length(ages)
