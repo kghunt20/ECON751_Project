@@ -694,7 +694,7 @@ end
 #   How many years, on average, will women work between those ages, overall and
 #   by education?
 ################################################################################
-ages = 45:54
+ages = 55:64
 
 simulated_LFP_old = zeros(length(ages))
 simulated_LFP_old1 = zeros(length(ages))
