@@ -830,8 +830,8 @@ end
 
 ages = 55:64
 
-#Show tax revenue for ages > 55
-@show sum(total_family_income[simulated_tax10_data[:,2] .> 55] .* 0.1)
+#Show tax revenue for ages >= 55
+@show sum(total_family_income[simulated_tax10_data[:,2] .>= 55] .* 0.1)
 
 simulated_tax10_LFP_old = zeros(length(ages))
 
@@ -851,9 +851,11 @@ end
 #   percent tax on the first 50,000 and a 20 percent tax on anything above that.
 #   Assume that the couples reported the woman’s earnings accurately to the IRS,
 #   although the wage is misreported in our data. You should therefore use your
-#   estimate of the true wage for this exercise.a) What will happen to the
+#   estimate of the true wage for this exercise.
+#   (a) What will happen to the
 #   average number of years worked between the ages 45-54?   What is the total
-#   revenue the IRS will collect? (b)  Do the same for ages 55-64.
+#   revenue the IRS will collect?
+#   (b)  Do the same for ages 55-64.
 ################################################################################
 
 ## Before tax values
@@ -895,40 +897,20 @@ simulated_tax1020_data = get_simulated_data(xhat, 20;
 
 total_family_incomepro = simulated_tax1020_data[:,8] + simulated_tax1020_data[:,5].*simulated_tax1020_data[:,3]
 
-#Show tax revenue for ages < 55
-taxprorevenue1 = zeros(length(total_family_incomepro))
-taxprorevenue2 = zeros(length(total_family_incomepro))
-taxprorevenue = zeros(length(total_family_incomepro))
-
-for i = 1:length(total_family_incomepro)
-
-    if total_family_incomepro[i] .< 50000
-        taxprorevenue1[i] = sum(total_family_incomepro[simulated_tax1020_data[:,2] .< 55] * 0.1)
+function taxes_paid_prog(income)
+    if income < 50000
+        taxes = 0.1*income
     else
-        taxprorevenue2[i] = sum((total_family_incomepro[simulated_tax1020_data[:,2] .< 55] .- 50000) * 0.2)
+        taxes = 0.1*50000 + (income - 50000)*0.2
     end
 
-    taxprorevenue[i]= taxprorevenue1[i] + taxprorevenue2[i]
+    taxes #deliverable
 end
 
-@show sum(taxprorevenue)
-
-
-#Show tax revenue for ages > 55
-taxprorevenue10 = zeros(length(total_family_incomepro))
-taxprorevenue20 = zeros(length(total_family_incomepro))
-taxprorevenue00 = zeros(length(total_family_incomepro))
-
-for i = 1:length(total_family_incomepro)
-    if total_family_incomepro[i] .< 50000
-        taxprorevenue10[i] = sum(total_family_incomepro[simulated_tax1020_data[:,2] .> 55] * 0.1)
-    else
-        taxprorevenue20[i] = sum((total_family_incomepro[simulated_tax1020_data[:,2] .> 55] .- 50000) * 0.2)
-    end
-    taxprorevenue00[i]= taxprorevenue10[i] + taxprorevenue20[i]
-end
-
-@show sum(taxprorevenue00)
+#Sum taxes paid by people under the age of 55
+@show sum(taxes_paid_prog.(total_family_incomepro[simulated_tax1020_data[:,2] .< 55]))
+#sum taxes paid by people 55 and older
+@show sum(taxes_paid_prog.(total_family_incomepro[simulated_tax1020_data[:,2] .>= 55]))
 
 ##years worked
 ages = 45:54
