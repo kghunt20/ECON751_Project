@@ -1,15 +1,16 @@
 ################################################################################
 #0. Packages
 ################################################################################
-# Hi
-using Random, Statistics, Distributions, Optim, DelimitedFiles, StatsBase, ForwardDiff, DataFrames, LinearAlgebra
+
+using Random, Statistics, Distributions, Optim, DelimitedFiles, StatsBase,
+      ForwardDiff, DataFrames, LinearAlgebra
 
 ################################################################################
 #1. Import data
 ################################################################################
 
 #Order of variables in data: id, age, lfp, x, wage, edu, lfp0, hinc
-#I deleted variable names from this file, so it is just numers.
+#I deleted variable names from this file, so it is just numbers.
 original_data = readdlm("data_age4554.txt");
 
 ################################################################################
@@ -42,18 +43,6 @@ function log_wage_det(parameters::AbstractVector{Z}, s, k, a, y) where Z
 
 end
 
-#Calculate the current period utility from working not including wife's income
-#Total utility from working would be U1 + wife's wage
-function U1(parameters::AbstractVector{Z}, y, prev_P, s, k; τ1 = 0.0, τ2 = 0.0, L = 50000) where Z
-
-    if y < L
-        (1-τ1) * y
-    else
-        (1-τ1)*L + (1-τ2)* (y-L)
-    end
-
-end
-
 #Calculate the current period utility from not working
 function U0(parameters::AbstractVector{Z}, y, prev_P, s, k; τ1 = 0.0, τ2 = 0.0, L = 50000) where Z
 
@@ -64,9 +53,9 @@ function U0(parameters::AbstractVector{Z}, y, prev_P, s, k; τ1 = 0.0, τ2 = 0.0
     α5 = parameters[11]
 
     if y < L
-        ((1-τ1)*y)*(1+α2) + α1 + α3*s + α4*k + α5*(prev_P-1)
+        ((1-τ1)*y)*α2 + α1 + α3*s + α4*k + α5*(prev_P-1)
     else
-        ((1-τ1)*L + (1-τ2)*(y - L))*(1+α2) + α1 + α3*s + α4*k + α5*(prev_P-1)
+        ((1-τ1)*L + (1-τ2)*(y - L))*α2 + α1 + α3*s + α4*k + α5*(prev_P-1)
     end
 
 end
@@ -88,17 +77,8 @@ end
 #T = Total number of periods the wife makes labor supply decisions.
 #k_start = Starting experience of the wife.
 
-function get_ξ_star(
-    parameters::AbstractVector{Z},
-    y,
-    s,
-    k_start;
-    T = T,
-    β = β,
-    τ1 = 0.0,
-    τ2 = 0.0,
-    L = 50000,
-) where Z
+function get_ξ_star(parameters::AbstractVector{Z}, y, s, k_start;
+                    T = T, β = β, τ1 = 0.0, τ2 = 0.0,L = 50000) where Z
 
     σ_ξ = parameters[1]
 
@@ -127,12 +107,10 @@ function get_ξ_star(
         #The cut-off for the wife where the higher tax kicks in.
         L_wife = maximum([0.0, L - y[t]])
 
-        A =
-            (
-                U0(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) -
-                U1(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) +
-                β * EV[t+1, i_k, prev_P] - β * EV[t+1, i_k+1, prev_P]
-            ) / (1 - τ1)
+        A = (U0(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) +
+             β * EV[t+1, i_k, prev_P] - β * EV[t+1, i_k+1, prev_P]) /
+            (1 - τ1)
+
         if A > 0
             ξ_star[t, i_k, prev_P] = log(A) - c_log_wage_det
         else
@@ -142,12 +120,9 @@ function get_ξ_star(
         #If the calculation before put the wife above the cut-off, redo calculation
         if exp(c_log_wage_det + ξ_star[t, i_k, prev_P]) > L_wife
 
-            A =
-                (
-                    U0(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) -
-                    U1(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) +
-                    β * EV[t+1, i_k, prev_P] - β * EV[t+1, i_k+1, prev_P] - (1 - τ1) * L_wife
-                ) / (1 - τ2) + L_wife
+            A = (U0(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) +
+                 β*EV[t+1,i_k,prev_P] - β*EV[t+1,i_k+1,prev_P] - (1-τ1)*L_wife)/
+                (1 - τ2) + L_wife
 
             if A > 0
                 ξ_star[t, i_k, prev_P] = log(A) - c_log_wage_det
@@ -165,7 +140,7 @@ function get_ξ_star(
         ξ_tax2 = maximum([ξ_tax2, ξ_star[t, i_k, prev_P]])
 
 
-        D1 = U1(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) + β*EV[t+1, i_k+1, prev_P]
+        D1 = β*EV[t+1, i_k+1, prev_P]
         P1 = (1 - Φ(ξ_star[t, i_k, prev_P] / σ_ξ))
 
         D2 = (1-τ1)*w
@@ -177,10 +152,9 @@ function get_ξ_star(
         D4 = (τ2 - τ1)*L_wife
         P4 = (1 - Φ(ξ_tax2 / σ_ξ))
 
-        D5 = U0(parameters, y[t], prev_P, s, k; τ1 = τ1, τ2 = τ2, L = L) + β*EV[t+1, i_k, prev_P]
+        D5 = U0(parameters,y[t],prev_P,s,k; τ1=τ1, τ2=τ2, L=L)+
+             β*EV[t+1, i_k, prev_P]
         P5 = Φ(ξ_star[t, i_k, prev_P] / σ_ξ)
-
-
 
         EV[t, i_k, prev_P] = D1*P1 +D2*P2 - D3*P3 + D4*P4 +D5*P5
 
@@ -199,15 +173,8 @@ end
 #T = Total number of periods the wife makes labor supply decisions.
 #wO = Observed wage of wife (with measurement error)
 
-function likelihood(
-    parameters::AbstractVector{Z};
-    data = data,
-    T = T,
-    β = β,
-    τ1 = 0.0,
-    τ2 = 0.0,
-    L = 50000,
-) where Z
+function likelihood(parameters::AbstractVector{Z};
+    data = data,T = T,β = β,τ1 = 0.0,τ2 = 0.0,L = 50000) where Z
 
     σ_ξ = parameters[1]
     σ_η = parameters[2]
@@ -247,16 +214,16 @@ function likelihood(
             #Update LL if wife works using equaation on page 109 in lecture 3
             if Pvec[t] == 1
 
-                u =
-                    log(wOvec[t]) -
+                u = log(wOvec[t]) -
                     log_wage_det(parameters, s, kvec[t], t + 44, yvec[t])
-                A = (ξ_star[t, i_k, Prev_Pvec[t]] - ρ * σ_ξ / σ_u * u) / (σ_ξ * (1 - ρ^2)^0.5)
+                A = (ξ_star[t, i_k, Prev_Pvec[t]] - ρ * σ_ξ / σ_u * u) /
+                    (σ_ξ * (1 - ρ^2)^0.5)
                 B = pdf(Normal(), u / σ_u) / σ_u
                 LL -= log((1.0 - cdf(Normal(), A)) * B)
 
                 i_k += 1
 
-                #Update LL if wife doesn't work using equation on page 109 of lecture 3.
+            #Update LL if wife doesn't work using equation on page 109 of lecture 3.
             elseif Pvec[t] == 0
 
                 LL -= log(cdf(Normal(), ξ_star[t, i_k, Prev_Pvec[t]] / σ_ξ))
@@ -281,39 +248,21 @@ end
 #Number of periods the wife makes labor supply decisions.
 T = 20
 
-#Old Initial guess without experience in the utility.
-x0 = [
-    0.5990950138078999,
-    0.1892819256699379,
-    9.295133566845593,
-    0.046655500082713575,
-    0.014359272734607026,
-    -0.00014647900745677907,
-    24126.810548022222,
-    0.00978890544903218,
-    0.0,
-]
-
-#Initial guess with experience, school, and previous work decision in utility.
-
+#Initial guess
 x0 = [0.5999902773217562,
-    0.1830464849167745,
-    9.380314493947242,
-    0.04007368511420846,
-    0.015969564714597234,
-    -0.00024363065608372497,
-    27283.44998663911,
-    0.014812008148388267,
-    -184.64192445511404,
-    -29.799206467841824,
-    -2080.5556691604734
+      0.1830464849167745,
+      9.380314493947242,
+      0.04007368511420846,
+      0.015969564714597234,
+     -0.00024363065608372497,
+      27283.44998663911,
+      0.014812008148388267,
+     -184.64192445511404,
+     -29.799206467841824,
+     -2080.5556691604734
 ]
-
-
-
 
 #Start with only 250 couples of data to get a good initial guess quickly
-#couples = sample(unique(store_data[:,1]), 100,  replace = false)
 data = original_data
 couples = sample(unique(data[:, 1]), 250, replace = false)
 data = original_data[subset.(original_data[:, 1]), :]
@@ -332,7 +281,7 @@ xhat = res2.minimizer
 
 
 ################################################################################
-#6. Calculate standard errors (Optional)
+#6. Calculate standard errors
 ################################################################################
 k = size(xhat)[1]
 omega = zeros(k,k)
@@ -360,8 +309,7 @@ Avar = diag(Avar_covar)
 
 
 function simulate_obs(parameters, N, y, s, k_start, prev_P;
-                      T = T, β = β, τ1 = 0.0, τ2 = 0.0, L = 50000
-                      )
+                      T = T, β = β, τ1 = 0.0, τ2 = 0.0, L = 50000)
 
     σ_ξ = parameters[1]
     σ_η = parameters[2]
@@ -384,17 +332,8 @@ function simulate_obs(parameters, N, y, s, k_start, prev_P;
 
             if ξ > ξ_star[t, i_k, prev_P]
                 P = 1
-                wO = exp(
-                    log_wage_det(
-                        parameters,
-                        s,
-                        k_start + i_k - 1,
-                        t + 44,
-                        y[t],
-                    ) +
-                    randn() * σ_η +
-                    ξ,
-                )
+                wO = exp(log_wage_det(parameters,s,k_start + i_k - 1,t + 44,y[t]) +
+                         randn() * σ_η + ξ)
                 k_prime = k + 1
                 i_k = i_k + 1
                 prev_P = 2
@@ -454,12 +393,6 @@ data = original_data
 
 simulated_data = get_simulated_data(xhat, 20)
 
-
-#outfile = "simulated_data.txt"
-#f = open(outfile, "w")
-#for i = 1:size(simulated_data, 1)
-#    println(f, simulated_data[i, :])
-#end
 
 
 ################################################################################
@@ -772,22 +705,22 @@ sum(simulated_LFP_old4)
 #        (b)  Do the same for ages 55-64.
 ################################################################################
 
-## Before tax values
+#Before tax values
 simulated_beforetax_data = get_simulated_data(xhat, 20; τ1 = 0, τ2 = 0)
 
 ages = 45:54
 
-simulated_beforetax_LFP_old = zeros(length(ages))
+simulated_beforetax_LFP_young = zeros(length(ages))
 
 for i = 1:length(ages)
     ### Overall ###
-    simulated_beforetax_LFP_old[i] = mean((
+    simulated_beforetax_LFP_young[i] = mean((
         simulated_beforetax_data[simulated_beforetax_data[:, 2].==ages[i], 3] .== 1.0
     ))
 
 end
 
-@show sum(simulated_beforetax_LFP_old);
+@show sum(simulated_beforetax_LFP_young);
 
 ages = 55:64
 
@@ -803,11 +736,12 @@ end
 
 @show sum(simulated_beforetax_LFP_old);
 
-## After tax values
+#After tax values
 simulated_tax10_data = get_simulated_data(xhat, 20; τ1 = 0.1, τ2 = 0.1)
 
 #Create a vector of total family income: husband income plus wife income * participation
-total_family_income = simulated_tax10_data[:,8] + simulated_tax10_data[:,5].*simulated_tax10_data[:,3]
+total_family_income = simulated_tax10_data[:,8] +
+                      simulated_tax10_data[:,5].*simulated_tax10_data[:,3]
 
 #Show tax revenue for ages < 55
 @show sum(total_family_income[simulated_tax10_data[:,2] .< 55] .* 0.1)
@@ -816,17 +750,17 @@ total_family_income = simulated_tax10_data[:,8] + simulated_tax10_data[:,5].*sim
 
 
 ages = 45:54
-simulated_tax10_LFP_old = zeros(length(ages))
+simulated_tax10_LFP_young = zeros(length(ages))
 
 for i = 1:length(ages)
     ### Overall ###
-    simulated_tax10_LFP_old[i] = mean((
+    simulated_tax10_LFP_young[i] = mean((
         simulated_tax10_data[simulated_tax10_data[:, 2].==ages[i], 3] .== 1.0
     ))
 
 end
 
-@show sum(simulated_tax10_LFP_old);
+@show sum(simulated_tax10_LFP_young);
 
 ages = 55:64
 
@@ -858,24 +792,24 @@ end
 #   (b)  Do the same for ages 55-64.
 ################################################################################
 
-## Before tax values
+#Before tax values
 simulated_beforetax1020_data = get_simulated_data(xhat, 20;
                                             τ1 = 0, τ2 = 0, L = 50000)
 
 ages = 45:54
 
-simulated_beforetax1020_LFP_old = zeros(length(ages))
+simulated_beforetax1020_LFP_young = zeros(length(ages))
 
 for i = 1:length(ages)
     ### Overall ###
-    simulated_beforetax1020_LFP_old[i] = mean((
+    simulated_beforetax1020_LFP_young[i] = mean((
         simulated_beforetax1020_data[simulated_beforetax1020_data[:, 2].==ages[i], 3] .== 1.0
     ))
 
 end
 
 
-@show sum(simulated_beforetax1020_LFP_old);
+@show sum(simulated_beforetax1020_LFP_young)
 
 ages = 55:64
 
@@ -889,9 +823,9 @@ for i = 1:length(ages)
 
 end
 
-@show sum(simulated_beforetax1020_LFP_old);
+@show sum(simulated_beforetax1020_LFP_old)
 
-## After tax values
+#After tax
 simulated_tax1020_data = get_simulated_data(xhat, 20;
                                             τ1 = 0.1, τ2 = 0.2, L = 50000)
 
@@ -912,21 +846,21 @@ end
 #sum taxes paid by people 55 and older
 @show sum(taxes_paid_prog.(total_family_incomepro[simulated_tax1020_data[:,2] .>= 55]))
 
-##years worked
+#Years worked
 ages = 45:54
 
-simulated_tax1020_LFP_old = zeros(length(ages))
+simulated_tax1020_LFP_young = zeros(length(ages))
 
 for i = 1:length(ages)
     ### Overall ###
-    simulated_tax1020_LFP_old[i] = mean((
+    simulated_tax1020_LFP_young[i] = mean((
         simulated_tax1020_data[simulated_tax1020_data[:, 2].==ages[i], 3] .== 1.0
     ))
 
 end
 
 
-@show sum(simulated_tax1020_LFP_old);
+@show sum(simulated_tax1020_LFP_young);
 
 ages = 55:64
 
